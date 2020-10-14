@@ -18,6 +18,7 @@
 #ifndef IGNITION_GAZEBO_SYSTEMS_LOGICAL_AUDIO_SENSOR_PLUGIN_MICROPHONE_HH_
 #define IGNITION_GAZEBO_SYSTEMS_LOGICAL_AUDIO_SENSOR_PLUGIN_MICROPHONE_HH_
 
+#include <ignition/gazebo/config.hh>
 #include <ignition/math/Vector3.hh>
 
 namespace ignition
@@ -43,14 +44,14 @@ namespace logical_audio
     ///   minimum volume detection level.
     ///   Must be >= 0.0 and <= 1.0.
     public: Microphone(const unsigned int _id,
-                       const ignition::math::Vector3f &_position,
+                       const ignition::math::Vector3d &_position,
                        const float _volumeDetectionThreshold);
 
     /// \brief The microphone's ID.
     private: unsigned int id;
 
     /// \brief The microphone's position, stored as (x,y,z).
-    private: ignition::math::Vector3f position;
+    private: ignition::math::Vector3d position;
 
     /// \brief The microphone's minimum volume detection level.
     ///   Must be a value between 0.0 and 1.0.

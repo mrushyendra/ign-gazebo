@@ -21,6 +21,7 @@
 #include <string>
 #include <unordered_map>
 
+#include <ignition/gazebo/config.hh>
 #include <ignition/math/Vector3.hh>
 
 namespace ignition
@@ -34,10 +35,14 @@ namespace systems
 namespace logical_audio
 {
   /// \brief Audio source attenuation functions.
-  enum class AttenuationFunction { Linear };
+  /// AttenuationFunction::Undefined is used to indicate that an
+  /// attenuation function has not been defined yet.
+  enum class AttenuationFunction { Linear, Undefined };
 
   /// \brief Audio source attenuation shapes.
-  enum class AttenuationShape { Sphere };
+  /// AttenuationShape::Undefined is used to indicate that an
+  /// attenuation shape has not been defined yet.
+  enum class AttenuationShape { Sphere, Undefined };
 
   /// \brief Class that acts as an audio source.
   ///   This class does not play actual audio to a device,
@@ -48,7 +53,6 @@ namespace logical_audio
   {
     /// \brief Constructor.
     /// \param[in] _id The source's ID.
-    ///   Must be >= 0.
     /// \param[in] _position The source's position (x,y,z).
     /// \param[in] _attenuationFunc The attenuation function.
     /// \param[in] _attenuationShape The attenuation shape.
@@ -72,7 +76,7 @@ namespace logical_audio
     ///   A value of 0 means that the source will play for an infinite
     ///   amount of time.
     public: Source(const unsigned int _id,
-                   const ignition::math::Vector3f &_position,
+                   const ignition::math::Vector3d &_position,
                    const AttenuationFunction _attenuationFunc,
                    const AttenuationShape _attenuationShape,
                    const float _innerRadius,
@@ -80,6 +84,52 @@ namespace logical_audio
                    const float _volumeLevel,
                    const bool _playing,
                    const unsigned int _playDuration);
+
+    /// \brief Constructor.
+    /// \param[in] _id The source's ID.
+    /// \param[in] _position The source's position (x,y,z).
+    /// \param[in] _attenuationFunc The attenuation function.
+    /// \param[in] _attenuationShape The attenuation shape.
+    /// \param[in] _innerRadius The inner radius.
+    /// \param[in] _falloffDistance The falloff distance.
+    /// \param[in] _volumeLevel The volume emitted from the source.
+    /// \param[in] _playing Whether the source is playing by default.
+    /// \param[in] _playDuration How long (in seconds) the source will
+    ///   play audio for.
+    /// \sa Source() for more information about the constructor parameters.
+    public: Source(const unsigned int _id,
+                   const ignition::math::Vector3d &_position,
+                   const std::string &_attenuationFunc,
+                   const std::string &_attenuationShape,
+                   const float _innerRadius,
+                   const float _falloffDistance,
+                   const float _volumeLevel,
+                   const bool _playing,
+                   const unsigned int _playDuration);
+
+    /// \brief Set the attenuation function that matches the defined string.
+    ///   The string is case sensitive, and must match the spelling
+    ///   of the values in AttenuationFunction. If the spelling does not match,
+    ///   the attenuation function is set as Undefined.
+    ///
+    ///   \em Example: to set the attenuation function to
+    ///     AttenuationFunction::Linear, the following
+    ///     are examples of valid strings: "linear", "Linear", "LINEAR"
+    /// \param[in] _attenuationFunc a string that should map to a value in
+    ///   AttenuationFunction.
+    public: void SetAttenuationFunction(const std::string &_attenuationFunc);
+
+    /// \brief Set the attenuation shape that matches the defined string.
+    ///   The string is case sensitive, and must match the spelling
+    ///   of the values in AttenuationShape. If the spelling does not match,
+    ///   the attenuation shape is set as Undefined.
+    ///
+    ///   \em Example: to set the attenuation shape to
+    ///     AttenuationShape::Sphere, the following
+    ///     are examples of valid strings: "sphere", "Sphere", "SPHERE"
+    /// \param[in] _attenuationShape a string that should map to a value in
+    ///   AttenuationShape.
+    public: void SetAttenuationShape(const std::string &_attenuationShape);
 
     /// \brief A map to help convert user-input strings to the proper
     ///   attenuation function.
@@ -95,7 +145,7 @@ namespace logical_audio
     private: unsigned int id;
 
     /// \brief The source position, stored as (x,y,z).
-    private: ignition::math::Vector3f position;
+    private: ignition::math::Vector3d position;
 
     /// \brief The attenuation function.
     private: AttenuationFunction attenuationFunc;

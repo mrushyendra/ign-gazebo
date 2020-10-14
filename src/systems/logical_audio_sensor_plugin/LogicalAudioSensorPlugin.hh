@@ -42,39 +42,47 @@ namespace systems
   /// such as speakers - this plugin is meant to check if audio
   /// could theoretically be heard at a certain location or not.
   ///
-  /// This system processes the following sdf parameters:
+  /// This system processes the following SDF parameters:
   ///
-  /// <audiosource> A new audiosource in the environment.
-  /// <audiosource><id> The source ID, which must be >= 0.
-  /// <audiosource><position> The position, expressed as "x y z".
-  ///   Each position coordinate must be separated by whitespace.
-  /// <audiosource><attenuationfunction> The attenuation function.
-  ///   Currently, the only valid value is "linear".
-  /// <audiosource><attenuationshape> The attenuation shape.
-  ///   Currently, the only valid value is "sphere".
-  /// <audiosource><innerradius> The inner radius of the attenuation shape.
-  ///   This value must be >= 0.0.
-  ///   The volume of the source will be <audiosource><volume> at locations
-  ///   that have a distance <= inner radius from the source.
-  /// <audiosource><falloffdistance> The falloff distance.
+  /// <b><audiosource></b> A new audiosource in the environment, which has the
+  ///   following child elements:
+  /// \par
+  /// <b><audiosource><id></b> The source ID, which must be >= 0.\n
+  /// <b><audiosource><position></b> The position, expressed as "x y z".
+  ///   Each position coordinate must be separated by whitespace.\n
+  /// <b><audiosource><attenuationfunction></b> The attenuation function.
+  ///   See logical_audio::AttenuationFunction for a list of valid attenuation
+  ///   functions, and logical_audio::Source::SetAttenuationFunction() for how
+  ///   to specify an attenuation function in SDF.\n
+  /// <b><audiosource><attenuationshape></b> The attenuation shape.
+  ///   Currently, the only valid value is "sphere".\n
+  /// <b><audiosource><innerradius></b> The inner radius of the attenuation
+  ///   shape. This value must be >= 0.0.
+  ///   The volume of the source will be <em><audiosource><volume></em> at
+  ///   locations that have a distance <= inner radius from the source.\n
+  /// <b><audiosource><falloffdistance></b> The falloff distance.
   ///   This value must be greater than the value for
-  ///   <audiosource><innerradius>.
-  ///   This defines the distance from the audio source where the volume is 0.
-  /// <audiosource><volumelevel> The volume level emitted from the source.
-  ///   This must be a value between 0.0 and 1.0 (representing 0% to 100%).
-  /// <audiosource><playing> Whether the source should play immediately or not.
-  ///   Use "true" to initiate audio immediately, and "false" otherwise.
-  /// <audiosource><playduration> The duration (in seconds) audio is played
-  ///   from the source.
+  ///   <em><audiosource><innerradius></em>.
+  ///   This defines the distance from the audio source where the volume is 0.\n
+  /// <b><audiosource><volumelevel></b> The volume level emitted from the
+  ///   source.
+  ///   This must be a value between 0.0 and 1.0 (representing 0% to 100%).\n
+  /// <b><audiosource><playing></b> Whether the source should play
+  ///   immediately or not.
+  ///   Use \p true to initiate audio immediately, and \p false otherwise.\n
+  /// <b><audiosource><playduration></b> The duration (in seconds) audio
+  ///   is played from the source.
   ///   This value must be >= 0.
   ///   A value of 0 means that the source will play for an infinite
   ///   amount of time.
   ///
-  /// <microphone> A new microphone in the environment.
-  /// <microphone><id> The microphone ID, which must be >= 0.
-  /// <microphone><position> The position, expressed as "x y z".
-  ///   Each position coordinate must be separated by whitespace.
-  /// <microphone><volumedetectionthreshold> The minimum volume level
+  /// <b><microphone></b> A new microphone in the environment,
+  ///   which has the following child elements:
+  /// \par
+  /// <b><microphone><id></b> The microphone ID, which must be >= 0.\n
+  /// <b><microphone><position></b> The position, expressed as "x y z".
+  ///   Each position coordinate must be separated by whitespace.\n
+  /// <b><microphone><volumedetectionthreshold></b> The minimum volume level
   ///   the microphone can detect.
   ///   This must be a value between 0.0 and 1.0 (representing 0% to 100%).
   class IGNITION_GAZEBO_VISIBLE LogicalAudioSensorPlugin :

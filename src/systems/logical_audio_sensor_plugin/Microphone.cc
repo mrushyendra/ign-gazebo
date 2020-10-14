@@ -30,7 +30,7 @@ namespace logical_audio
 
   //////////////////////////////////////////////////
   Microphone::Microphone(const unsigned int _id,
-                         const ignition::math::Vector3f &_position,
+                         const ignition::math::Vector3d &_position,
                          const float _volumeDetectionThreshold) :
     id(_id),
     position(_position),

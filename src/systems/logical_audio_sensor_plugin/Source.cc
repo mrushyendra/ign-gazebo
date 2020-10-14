@@ -17,6 +17,11 @@
 
 #include "Source.hh"
 
+#include <algorithm>
+#include <cctype>
+#include <string>
+#include <unordered_map>
+
 namespace ignition
 {
 namespace gazebo
@@ -38,7 +43,7 @@ namespace logical_audio
 
   //////////////////////////////////////////////////
   Source::Source(const unsigned int _id,
-                 const ignition::math::Vector3f &_position,
+                 const ignition::math::Vector3d &_position,
                  const AttenuationFunction _attenuationFunc,
                  const AttenuationShape _attenuationShape,
                  const float _innerRadius,
@@ -58,6 +63,55 @@ namespace logical_audio
   {
   }
 
+  //////////////////////////////////////////////////
+  Source::Source(const unsigned int _id,
+                 const ignition::math::Vector3d &_position,
+                 const std::string &_attenuationFunc,
+                 const std::string &_attenuationShape,
+                 const float _innerRadius,
+                 const float _falloffDistance,
+                 const float _volumeLevel,
+                 const bool _playing,
+                 const unsigned int _playDuration) :
+    id(_id),
+    position(_position),
+    innerRadius(_innerRadius),
+    falloffDistance(_falloffDistance),
+    volumeLevel(_volumeLevel),
+    playing(_playing),
+    playDuration(_playDuration)
+  {
+    this->SetAttenuationShape(_attenuationShape);
+    this->SetAttenuationFunction(_attenuationFunc);
+  }
+
+  //////////////////////////////////////////////////
+  void Source::SetAttenuationFunction(const std::string &_attenuationFunc)
+  {
+    std::string caseInsensitiveFunc;
+    std::transform(_attenuationFunc.begin(), _attenuationFunc.end(),
+        caseInsensitiveFunc.begin(), ::tolower);
+
+    auto iter = this->kAttFuncMap.find(caseInsensitiveFunc);
+    if (iter != this->kAttFuncMap.end())
+      this->attenuationFunc = iter->second;
+    else
+      this->attenuationFunc = AttenuationFunction::Undefined;
+  }
+
+  //////////////////////////////////////////////////
+  void Source::SetAttenuationShape(const std::string &_attenuationShape)
+  {
+    std::string caseInsensitiveShape;
+    std::transform(_attenuationShape.begin(), _attenuationShape.end(),
+        caseInsensitiveShape.begin(), ::tolower);
+
+    auto iter = this->kAttShapeMap.find(caseInsensitiveShape);
+    if (iter != this->kAttShapeMap.end())
+      this->attenuationShape = iter->second;
+    else
+      this->attenuationShape = AttenuationShape::Undefined;
+  }
 }
 }
 }
