@@ -33,11 +33,50 @@ namespace logical_audio
                          const ignition::math::Vector3d &_position,
                          const float _volumeDetectionThreshold) :
     id(_id),
-    position(_position),
-    volumeDetectionThreshold(_volumeDetectionThreshold)
+    position(_position)
   {
+    if (_volumeDetectionThreshold < 0.0f)
+      this->volumeDetectionThreshold = 0.0f;
+    else if (_volumeDetectionThreshold > 1.0f)
+      this->volumeDetectionThreshold = 1.0f;
+    else
+      this->volumeDetectionThreshold = _volumeDetectionThreshold;
   }
 
+  //////////////////////////////////////////////////
+  bool Microphone::Detect(const float _volumeLevel) const
+  {
+    // if the volume level is <= 0, this can't be detected
+    // (not even if this->volumeDetectionThreshold is 0.0)
+    if (_volumeLevel < 0.00001f)
+      return false;
+
+    return _volumeLevel >= this->volumeDetectionThreshold;
+  }
+
+  //////////////////////////////////////////////////
+  unsigned int Microphone::GetID() const
+  {
+    return this->id;
+  }
+
+  //////////////////////////////////////////////////
+  ignition::math::Vector3d Microphone::GetPosition() const
+  {
+    return this->position;
+  }
+
+  //////////////////////////////////////////////////
+  float Microphone::GetVolumeDetectionThreshold() const
+  {
+    return this->volumeDetectionThreshold;
+  }
+
+  //////////////////////////////////////////////////
+  void Microphone::SetPosition(const ignition::math::Vector3d &_position)
+  {
+    this->position = _position;
+  }
 }
 }
 }

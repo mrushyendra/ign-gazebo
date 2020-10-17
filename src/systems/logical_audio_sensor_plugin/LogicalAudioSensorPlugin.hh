@@ -88,6 +88,7 @@ namespace systems
   class IGNITION_GAZEBO_VISIBLE LogicalAudioSensorPlugin :
     public System,
     public ISystemConfigure,
+    public ISystemPreUpdate,
     public ISystemPostUpdate
   {
     /// \brief Constructor
@@ -98,13 +99,17 @@ namespace systems
 
     /// Documentation inherited
     public: void Configure(const Entity &_entity,
-                           const std::shared_ptr<const sdf::Element> &_sdf,
-                           EntityComponentManager &_ecm,
-                           EventManager &_eventMgr) override;
+                const std::shared_ptr<const sdf::Element> &_sdf,
+                EntityComponentManager &_ecm,
+                EventManager &_eventMgr) override;
+
+    // Documentation inherited
+    public: void PreUpdate(const ignition::gazebo::UpdateInfo &_info,
+                ignition::gazebo::EntityComponentManager &_ecm) override;
 
     /// Documentation inherited
     public: void PostUpdate(const UpdateInfo &_info,
-                            const EntityComponentManager &_ecm) override;
+                const EntityComponentManager &_ecm) override;
 
     /// \brief Private data pointer
     private: std::unique_ptr<LogicalAudioSensorPluginPrivate> dataPtr;

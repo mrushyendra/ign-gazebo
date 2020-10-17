@@ -18,6 +18,7 @@
 #include "LogicalAudioSensorPlugin.hh"
 
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include <ignition/plugin/Register.hh>
@@ -90,16 +91,35 @@ void LogicalAudioSensorPlugin::Configure(const Entity &_entity,
 }
 
 //////////////////////////////////////////////////
+void LogicalAudioSensorPlugin::PreUpdate(const UpdateInfo &_info,
+                EntityComponentManager &ecm)
+{
+  // TODO(adlarkin) fill this in
+  // outline:
+  //  - Start playing audio sources if it's time to do so. This can happen if:
+  //      1) it's the start of simulation and a source has the
+  //         playing attribute set to true
+  //      2) start service was called
+}
+
+//////////////////////////////////////////////////
 void LogicalAudioSensorPlugin::PostUpdate(const UpdateInfo &_info,
                 const EntityComponentManager &_ecm)
 {
   // TODO(adlarkin) fill this in
+  // outline:
+  //  - Stop playing audio sources if it's time to do so. This can happen if:
+  //      1) play duration has passed
+  //      2) stop service was called
+  //  - See if microphones can hear any of the playing audio sources
 }
 
 //////////////////////////////////////////////////
 void LogicalAudioSensorPluginPrivate::CreateAudioSource(
     const sdf::ElementPtr &_elem)
 {
+  static std::unordered_set<unsigned int> sourceIDs;
+
   static const std::string kSourceSkipMsg =
     "Skipping the creation of this source.\n";
 
@@ -109,6 +129,15 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
     return;
   }
   const auto id = _elem->Get<unsigned int>("id");
+
+  // make sure no other sources exist with the same ID
+  if (sourceIDs.find(id) != sourceIDs.end())
+  {
+    ignerr << "The specified source ID already exists for "
+      << "another source. " << kSourceSkipMsg;
+    return;
+  }
+  sourceIDs.insert(id);
 
   if (!_elem->HasElement("position"))
   {
@@ -166,15 +195,19 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
     return;
   }
   const auto playDuration = _elem->Get<unsigned int>("playduration");
+  // TODO(adlarkin) do something with playDuration since it's not saved
+  // as a part of the source object
 
   this->sources.push_back({id, position, attenuationFunc, attenuationShape,
-      innerRadius, falloffDistance, volumeLevel, playing, playDuration});
+      innerRadius, falloffDistance, volumeLevel, playing});
 }
 
 //////////////////////////////////////////////////
 void LogicalAudioSensorPluginPrivate::CreateMicrophone(
     const sdf::ElementPtr &_elem)
 {
+  static std::unordered_set<unsigned int> microphoneIDs;
+
   static const std::string kMicSkipMsg =
     "Skipping the creation of this microphone.\n";
 
@@ -184,6 +217,15 @@ void LogicalAudioSensorPluginPrivate::CreateMicrophone(
     return;
   }
   const auto id = _elem->Get<unsigned int>("id");
+
+  // make sure no other microphones exist with the same ID
+  if (microphoneIDs.find(id) != microphoneIDs.end())
+  {
+    ignerr << "The specified microphone ID already exists for "
+      << "another microphone. " << kMicSkipMsg;
+    return;
+  }
+  microphoneIDs.insert(id);
 
   if (!_elem->HasElement("position"))
   {

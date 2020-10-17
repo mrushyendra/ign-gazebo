@@ -38,14 +38,40 @@ namespace logical_audio
   {
     /// \brief Constructor.
     /// \param[in] _id The microphone's ID.
-    ///   Must be >= 0.
     /// \param[in] _position The microphone's position (x,y,z).
     /// \param[in] _volumeDetectionThreshold The microphone's
     ///   minimum volume detection level.
     ///   Must be >= 0.0 and <= 1.0.
+    ///   If the value given is < 0.0 or > 1.0, it will be clipped to
+    ///   0.0 (if < 0.0) or 1.0 (if > 1.0).
     public: Microphone(const unsigned int _id,
                        const ignition::math::Vector3d &_position,
                        const float _volumeDetectionThreshold);
+
+    /// \brief Determines if the microphone can detect volume at a specific
+    ///   level.
+    /// \param[in] _volumeLevel The volume level that the microphone is
+    ///   attempting to detect. This should be a value between
+    ///   \c 0.0 (no volume) and \c 1.0 (maximum volume).
+    /// \return \c True if the microphone can detect volume at \c _volumeLevel,
+    ///   \c False otherwise.
+    public: bool Detect(const float _volumeLevel) const;
+
+    /// \brief Get the microphone's ID.
+    /// \return The ID of the microphone.
+    public: unsigned int GetID() const;
+
+    /// \brief Get the microphone's position.
+    /// \return The position of the microphone.
+    public: ignition::math::Vector3d GetPosition() const;
+
+    /// \brief Get the microphone's volume detection threshold.
+    /// \return The volume detection threshold.
+    public: float GetVolumeDetectionThreshold() const;
+
+    /// \brief Set the microphone's position.
+    /// \param[in] _position The microphone's new position.
+    public: void SetPosition(const ignition::math::Vector3d &_position);
 
     /// \brief The microphone's ID.
     private: unsigned int id;
