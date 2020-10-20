@@ -32,14 +32,15 @@ namespace systems
 {
 namespace logical_audio
 {
-
+  /// \brief A map to help convert user-input strings to the proper
+  ///   attenuation function.
   const std::unordered_map<std::string, AttenuationFunction>
-    Source::kAttFuncMap {
-      {"linear", AttenuationFunction::Linear}};
+    kAttFuncMap {{"linear", AttenuationFunction::Linear}};
 
+  /// \brief A map to help convert user-input strings to the proper
+  ///   attenuation shape.
   const std::unordered_map<std::string, AttenuationShape>
-    Source::kAttShapeMap {
-      {"sphere", AttenuationShape::Sphere}};
+    kAttShapeMap {{"sphere", AttenuationShape::Sphere}};
 
   //////////////////////////////////////////////////
   Source::Source(const unsigned int _id,
@@ -151,8 +152,8 @@ namespace logical_audio
     std::transform(_attenuationFunc.begin(), _attenuationFunc.end(),
         _attenuationFunc.begin(), ::tolower);
 
-    auto iter = this->kAttFuncMap.find(_attenuationFunc);
-    if (iter != this->kAttFuncMap.end())
+    auto iter = kAttFuncMap.find(_attenuationFunc);
+    if (iter != kAttFuncMap.end())
       this->attenuationFunc = iter->second;
     else
       this->attenuationFunc = AttenuationFunction::Undefined;
@@ -164,8 +165,8 @@ namespace logical_audio
     std::transform(_attenuationShape.begin(), _attenuationShape.end(),
         _attenuationShape.begin(), ::tolower);
 
-    auto iter = this->kAttShapeMap.find(_attenuationShape);
-    if (iter != this->kAttShapeMap.end())
+    auto iter = kAttShapeMap.find(_attenuationShape);
+    if (iter != kAttShapeMap.end())
       this->attenuationShape = iter->second;
     else
       this->attenuationShape = AttenuationShape::Undefined;

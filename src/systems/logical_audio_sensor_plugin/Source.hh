@@ -202,16 +202,6 @@ namespace logical_audio
     /// \return The volume level.
     public: float GetVolumeLevel() const;
 
-    /// \brief A map to help convert user-input strings to the proper
-    ///   attenuation function.
-    private: static const std::unordered_map<std::string, AttenuationFunction>
-              kAttFuncMap;
-
-    /// \brief A map to help convert user-input strings to the proper
-    ///   attenuation shape.
-    private: static const std::unordered_map<std::string, AttenuationShape>
-              kAttShapeMap;
-
     /// \brief The source ID.
     private: unsigned int id;
 
