@@ -21,6 +21,7 @@
 #include <memory>
 
 #include <ignition/gazebo/System.hh>
+#include <ignition/msgs.hh>
 
 namespace ignition
 {
@@ -98,18 +99,36 @@ namespace systems
     public: ~LogicalAudioSensorPlugin() override;
 
     /// Documentation inherited
-    public: void Configure(const Entity &_entity,
+    public: void Configure(const Entity &,
                 const std::shared_ptr<const sdf::Element> &_sdf,
-                EntityComponentManager &_ecm,
-                EventManager &_eventMgr) override;
+                EntityComponentManager &,
+                EventManager &) override;
 
     // Documentation inherited
     public: void PreUpdate(const ignition::gazebo::UpdateInfo &_info,
-                ignition::gazebo::EntityComponentManager &_ecm) override;
+                ignition::gazebo::EntityComponentManager &) override;
 
     /// Documentation inherited
     public: void PostUpdate(const UpdateInfo &_info,
-                const EntityComponentManager &_ecm) override;
+                const EntityComponentManager &) override;
+
+    /// \brief Callback for a service call that can start playing an audio
+    ///   source. If the source specified in the service is already playing,
+    ///   nothing happens.
+    /// \param[in] _req The service request, which contains the ID of the source
+    ///   to start playing.
+    ///   If the ID given in the request doesn't match any of the existing audio
+    ///   source IDs, nothing happens.
+    private: void PlaySourceSrv(const ignition::msgs::UInt64 &_req);
+
+    /// \brief Callback for a service call that can stop playing an audio
+    ///   source. If the source specified in the service is already stopped,
+    ///   nothing happens.
+    /// \param[in] _req The service request, which contains the ID of the source
+    ///   to stop playing.
+    ///   If the ID given in the request doesn't match any of the existing audio
+    ///   source IDs, nothing happens.
+    private: void StopSourceSrv(const ignition::msgs::UInt64 &_req);
 
     /// \brief Private data pointer
     private: std::unique_ptr<LogicalAudioSensorPluginPrivate> dataPtr;

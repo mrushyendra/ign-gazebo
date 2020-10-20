@@ -11,7 +11,7 @@
         <falloffdistance>5.0</falloffdistance>
         <volumelevel>.8</volumelevel>
         <playing>true</playing>
-        <playduration>0</playduration>
+        <playduration>500</playduration>
       </source>
       <source>
         <id>2</id>
@@ -28,6 +28,11 @@
         <id>1</id>
         <position>0 1 0</position>
         <volumethreshold>.4</volumethreshold>
+      </microphone>
+      <microphone>
+        <id>2</id>
+        <position>1 1 0</position>
+        <volumethreshold>.2</volumethreshold>
       </microphone>
     </plugin>
   </world>

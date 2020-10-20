@@ -17,11 +17,16 @@
 
 #include "LogicalAudioSensorPlugin.hh"
 
+#include <chrono>
+#include <mutex>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include <ignition/plugin/Register.hh>
+#include <ignition/transport.hh>
 #include <sdf/Element.hh>
 
 #include "Microphone.hh"
@@ -41,30 +46,76 @@ class ignition::gazebo::systems::LogicalAudioSensorPluginPrivate
   /// \param[in] _elem A pointer to the microphone element in the SDF file.
   public: void CreateMicrophone(const sdf::ElementPtr &_elem);
 
-  /// \brief The audio sources in the environment
-  public: std::vector<logical_audio::Source> sources;
+  /// \brief Struct that contains information about a source's
+  ///   current playing state.
+  public: struct PlayInfo
+          {
+            /// \brief When the audio source most recently started
+            ///   to play (in the context of sim time)
+            std::chrono::steady_clock::duration startTime;
+
+            /// \brief How long the audio source will play for
+            ///   (seconds, or number of simulation steps)
+            unsigned int playDuration;
+          };
+
+  /// \brief The audio sources in the environment.
+  ///   The key is the ID of the source.
+  public: std::unordered_map<unsigned int,
+            std::pair<logical_audio::Source, PlayInfo>> sources;
 
   /// \brief The microphones in the environment
   public: std::vector<logical_audio::Microphone> microphones;
+
+  /// \brief Whether the first simulation step has occurred or not.
+  ///   This is needed in order to properly initialize the start time for
+  ///   audio sources that begin playing at the start of simulation.
+  public: bool firstStep{true};
+
+  /// \brief Node used to handle the start source service
+  public: ignition::transport::Node startSrvNode;
+
+  /// \brief Node used to handle the stop source service
+  public: ignition::transport::Node stopSrvNode;
+
+  /// \brief A set of sources that should be started based on recent
+  ///   service calls. The set contains source IDs.
+  public: std::unordered_set<unsigned int> sourcesToStart;
+
+  /// \brief Mutex to keep the sourcesToStart variable thread-safe
+  public: std::mutex startSourcesMutex;
+
+  /// \brief A set of sources that should be stopped based on recent
+  ///   service calls. The set contains source IDs.
+  public: std::unordered_set<unsigned int> sourcesToStop;
+
+  /// \brief Mutex to keep the sourcesToStop variable thread-safe
+  public: std::mutex stopSourcesMutex;
 };
 
 //////////////////////////////////////////////////
 LogicalAudioSensorPlugin::LogicalAudioSensorPlugin()
   : System(), dataPtr(std::make_unique<LogicalAudioSensorPluginPrivate>())
 {
+  if (!this->dataPtr->startSrvNode.Advertise("/play_source",
+        &LogicalAudioSensorPlugin::PlaySourceSrv, this))
+    ignerr << "Error advertising the play source service\n";
+
+  if (!this->dataPtr->stopSrvNode.Advertise("/stop_source",
+        &LogicalAudioSensorPlugin::StopSourceSrv, this))
+    ignerr << "Error advertising the stop source service\n";
 }
 
 //////////////////////////////////////////////////
 LogicalAudioSensorPlugin::~LogicalAudioSensorPlugin()
 {
-  // TODO(adlarkin) fill this in
 }
 
 //////////////////////////////////////////////////
-void LogicalAudioSensorPlugin::Configure(const Entity &_entity,
+void LogicalAudioSensorPlugin::Configure(const Entity &,
                            const std::shared_ptr<const sdf::Element> &_sdf,
-                           EntityComponentManager &_ecm,
-                           EventManager &_eventMgr)
+                           EntityComponentManager &,
+                           EventManager &)
 {
   const std::string kSource = "source";
   const std::string kMicrophone = "microphone";
@@ -92,26 +143,106 @@ void LogicalAudioSensorPlugin::Configure(const Entity &_entity,
 
 //////////////////////////////////////////////////
 void LogicalAudioSensorPlugin::PreUpdate(const UpdateInfo &_info,
-                EntityComponentManager &ecm)
+                EntityComponentManager &)
 {
-  // TODO(adlarkin) fill this in
-  // outline:
-  //  - Start playing audio sources if it's time to do so. This can happen if:
-  //      1) it's the start of simulation and a source has the
-  //         playing attribute set to true
-  //      2) start service was called
+  auto startTime = _info.simTime - _info.dt;
+
+  if (this->dataPtr->firstStep)
+  {
+    // save the initial playback start time for audio sources
+    // as the initial time of the simulation
+    for (auto & elem : this->dataPtr->sources)
+    {
+      auto& playInfo = elem.second.second;
+
+      playInfo.startTime = startTime;
+
+      // playInfo.playDuration is expressed as a number of simulation steps,
+      // so we must multiply playInfo.playDuration by the simulation time step
+      // in order to get an accurate duration comparison
+      playInfo.playDuration *= _info.dt.count();
+    }
+
+    this->dataPtr->firstStep = false;
+  }
+
+  // were any sources requested to start playing through a service call?
+  const std::lock_guard<std::mutex> lock(this->dataPtr->startSourcesMutex);
+  for (const auto & id : this->dataPtr->sourcesToStart)
+  {
+    auto iter = this->dataPtr->sources.find(id);
+    if (iter != this->dataPtr->sources.end())
+    {
+      iter->second.first.StartPlaying();
+      iter->second.second.startTime = startTime;
+
+      ignmsg << "started source " << id << " via service call\n";
+    }
+  }
+  this->dataPtr->sourcesToStart.clear();
 }
 
 //////////////////////////////////////////////////
 void LogicalAudioSensorPlugin::PostUpdate(const UpdateInfo &_info,
-                const EntityComponentManager &_ecm)
+                const EntityComponentManager &)
 {
-  // TODO(adlarkin) fill this in
-  // outline:
-  //  - Stop playing audio sources if it's time to do so. This can happen if:
-  //      1) play duration has passed
-  //      2) stop service was called
-  //  - See if microphones can hear any of the playing audio sources
+  // see if any sources should stop playing here because of a service call
+  std::unique_lock<std::mutex> lock(this->dataPtr->stopSourcesMutex);
+  for (const auto & id : this->dataPtr->sourcesToStop)
+  {
+    auto iter = this->dataPtr->sources.find(id);
+    if (iter != this->dataPtr->sources.end())
+      iter->second.first.StopPlaying();
+    ignmsg << "stopped source " << id << " via service call\n";
+  }
+  this->dataPtr->sourcesToStop.clear();
+  lock.unlock();
+
+  for (auto & elem : this->dataPtr->sources)
+  {
+    auto& source = elem.second.first;
+    auto& playInfo = elem.second.second;
+
+    // ignore this source if it isn't playing
+    if (!source.IsPlaying())
+      continue;
+    // see if an audio source has played for its playing duration
+    // (make sure the audio source doesn't have an infinite play duration)
+    else if ((_info.simTime.count() - playInfo.startTime.count() >
+             playInfo.playDuration) && (playInfo.playDuration > 0u))
+    {
+      ignmsg << "stopping source " << source.GetID() << "\n";
+      source.StopPlaying();
+    }
+    // this audio source is still playing - can any microphones hear it?
+    else
+    {
+      for (const auto & mic : this->dataPtr->microphones)
+      {
+        if (mic.Detect(source.VolumeLevel(mic.GetPosition())))
+        {
+          ignmsg << "microphone " << mic.GetID() <<
+            " can hear source " << source.GetID() << "\n";
+        }
+      }
+    }
+  }
+}
+
+//////////////////////////////////////////////////
+void LogicalAudioSensorPlugin::PlaySourceSrv(
+    const ignition::msgs::UInt64 &_req)
+{
+  const std::lock_guard<std::mutex> lock(this->dataPtr->startSourcesMutex);
+  this->dataPtr->sourcesToStart.insert(_req.data());
+}
+
+//////////////////////////////////////////////////
+void LogicalAudioSensorPlugin::StopSourceSrv(
+    const ignition::msgs::UInt64 &_req)
+{
+  const std::lock_guard<std::mutex> lock(this->dataPtr->stopSourcesMutex);
+  this->dataPtr->sourcesToStop.insert(_req.data());
 }
 
 //////////////////////////////////////////////////
@@ -195,11 +326,13 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
     return;
   }
   const auto playDuration = _elem->Get<unsigned int>("playduration");
-  // TODO(adlarkin) do something with playDuration since it's not saved
-  // as a part of the source object
 
-  this->sources.push_back({id, position, attenuationFunc, attenuationShape,
-      innerRadius, falloffDistance, volumeLevel, playing});
+  logical_audio::Source nextSource(id, position, attenuationFunc,
+      attenuationShape, innerRadius, falloffDistance, volumeLevel, playing);
+  PlayInfo playInfo;
+  playInfo.playDuration = playDuration;
+
+  this->sources.insert({id, {nextSource, playInfo}});
 }
 
 //////////////////////////////////////////////////
@@ -247,6 +380,7 @@ void LogicalAudioSensorPluginPrivate::CreateMicrophone(
 IGNITION_ADD_PLUGIN(LogicalAudioSensorPlugin,
                     ignition::gazebo::System,
                     LogicalAudioSensorPlugin::ISystemConfigure,
+                    LogicalAudioSensorPlugin::ISystemPreUpdate,
                     LogicalAudioSensorPlugin::ISystemPostUpdate)
 
 IGNITION_ADD_PLUGIN_ALIAS(LogicalAudioSensorPlugin,
