@@ -29,11 +29,6 @@ set(gui_sources
   PARENT_SCOPE
 )
 
-set(logical_audio_sensor_sources
-  systems/logical_audio_sensor_plugin/Microphone.cc
-  systems/logical_audio_sensor_plugin/Source.cc
-)
-
 ign_add_component(ign SOURCES ign.cc GET_TARGET_NAME ign_lib_target)
 target_link_libraries(${ign_lib_target}
   PRIVATE
@@ -63,8 +58,8 @@ set (sources
   View.cc
   World.cc
   ${PROTO_PRIVATE_SRC}
-  ${logical_audio_sensor_sources}
   ${network_sources}
+  systems/logical_audio_sensor_plugin/LogicalAudio.cc
 )
 
 set (gtest_sources
@@ -89,8 +84,7 @@ set (gtest_sources
   network/NetworkConfig_TEST.cc
   network/PeerTracker_TEST.cc
   network/NetworkManager_TEST.cc
-  systems/logical_audio_sensor_plugin/Microphone_TEST.cc
-  systems/logical_audio_sensor_plugin/Source_TEST.cc
+  systems/logical_audio_sensor_plugin/LogicalAudio_TEST.cc
 )
 
 # Create the library target

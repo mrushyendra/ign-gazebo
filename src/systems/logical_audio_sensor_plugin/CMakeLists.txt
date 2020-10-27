@@ -1,8 +1,7 @@
 gz_add_system(logicalaudiosensorplugin
   SOURCES
     LogicalAudioSensorPlugin.cc
-    Microphone.cc
-    Source.cc
+    LogicalAudio.cc
   PUBLIC_LINK_LIBS
     ignition-common${IGN_COMMON_VER}::ignition-common${IGN_COMMON_VER}
     ignition-math${IGN_MATH_VER}::ignition-math${IGN_MATH_VER}

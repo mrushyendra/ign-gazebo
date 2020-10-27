@@ -14,14 +14,12 @@
  * limitations under the License.
  *
  */
-
 #ifndef IGNITION_GAZEBO_SYSTEMS_LOGICAL_AUDIO_SENSOR_PLUGIN_HH_
 #define IGNITION_GAZEBO_SYSTEMS_LOGICAL_AUDIO_SENSOR_PLUGIN_HH_
 
 #include <memory>
 
 #include <ignition/gazebo/System.hh>
-#include <ignition/msgs.hh>
 
 namespace ignition
 {
@@ -36,56 +34,79 @@ namespace systems
 
   /// \brief A plugin for trivial audio detection.
   ///
-  /// Multiple audio sources and microphones can be created.
+  /// Each <plugin> tag can only accept one sensor (either a sound source
+  /// or microphone).
+  /// In order to create multiple audio sources and microphones,
+  /// multiple <plugin> tags must be used (one for each sensor).
   /// After each simulation step, microphones check if audio
   /// was detected by any sources in the world.
   /// No audio is actually played to an audio device
   /// such as speakers - this plugin is meant to check if audio
   /// could theoretically be heard at a certain location or not.
   ///
-  /// This system processes the following SDF parameters:
+  /// Secifying an audio source via SDF is done as follows:
   ///
-  /// <b><audiosource></b> A new audiosource in the environment, which has the
+  /// <audiosource> A new audiosource in the environment, which has the
   ///   following child elements:
-  /// \par
-  /// <b><audiosource><id></b> The source ID, which must be >= 0.\n
-  /// <b><audiosource><position></b> The position, expressed as "x y z".
-  ///   Each position coordinate must be separated by whitespace.\n
-  /// <b><audiosource><attenuationfunction></b> The attenuation function.
-  ///   See logical_audio::AttenuationFunction for a list of valid attenuation
-  ///   functions, and logical_audio::Source::SetAttenuationFunction() for how
-  ///   to specify an attenuation function in SDF.\n
-  /// <b><audiosource><attenuationshape></b> The attenuation shape.
-  ///   Currently, the only valid value is "sphere".\n
-  /// <b><audiosource><innerradius></b> The inner radius of the attenuation
-  ///   shape. This value must be >= 0.0.
-  ///   The volume of the source will be <em><audiosource><volume></em> at
-  ///   locations that have a distance <= inner radius from the source.\n
-  /// <b><audiosource><falloffdistance></b> The falloff distance.
-  ///   This value must be greater than the value for
-  ///   <em><audiosource><innerradius></em>.
-  ///   This defines the distance from the audio source where the volume is 0.\n
-  /// <b><audiosource><volumelevel></b> The volume level emitted from the
-  ///   source.
-  ///   This must be a value between 0.0 and 1.0 (representing 0% to 100%).\n
-  /// <b><audiosource><playing></b> Whether the source should play
-  ///   immediately or not.
-  ///   Use \p true to initiate audio immediately, and \p false otherwise.\n
-  /// <b><audiosource><playduration></b> The duration (in seconds) audio
-  ///   is played from the source.
-  ///   This value must be >= 0.
-  ///   A value of 0 means that the source will play for an infinite
-  ///   amount of time.
+  ///     * <id> The source ID, which must be unique and >= 0.
+  ///     * <pose> The pose, expressed as "x y z roll pitch yaw".
+  ///       Each pose coordinate must be separated by whitespace.
+  ///       The pose is defined relative to the plugin's parent element.
+  ///       So, if the plugin is used inside of a <model> tag, then the
+  ///       source's <pose> is relative to the model's pose.
+  ///       If the plugin is used inside of a <world> tag, then the source's
+  ///       <pose> is relative to the world (i.e., <pose> specifies an
+  ///       absolute pose).
+  ///     * <attenuationfunction> The attenuation function.
+  ///       See logical_audio::AttenuationFunction for a list of valid
+  ///       attenuation functions, and logical_audio::SetAttenuationFunction
+  ///       for how to specify an attenuation function in SDF.
+  ///     * <attenuationshape> The attenuation shape.
+  ///       See logical_audio::AttenuationShape for a list of valid
+  ///       attenuation shapes, and logical_audio::SetAttenuationShape for how
+  ///       to specify an attenuation shape in SDF.
+  ///     * <innerradius> The inner radius of the attenuation shape.
+  ///       This value must be >= 0.0. The volume of the source will be
+  ///       <audiosource><volume> at locations that have a distance <= inner
+  ///       radius from the source.
+  ///     * <falloffdistance> The falloff distance. This value must be greater
+  ///       than the value of the source's <innerradius>. This defines the
+  ///       distance from the audio source where the volume becomes 0.
+  ///     * <volumelevel> The volume level emitted from the source. This must
+  ///       be a value between 0.0 and 1.0 (representing 0% to 100%).
+  ///     * <playing> Whether the source should play immediately or not.
+  ///       Use true to initiate audio immediately, and false otherwise.
+  ///     * <playduration> The duration (in seconds) audio is played from the
+  ///       source. This value must be >= 0. A value of 0 means that the source
+  ///       will play for an infinite amount of time.
   ///
-  /// <b><microphone></b> A new microphone in the environment,
+  /// Specifying a microphone via SDF is done as follows:
+  ///
+  /// <microphone> A new microphone in the environment,
   ///   which has the following child elements:
-  /// \par
-  /// <b><microphone><id></b> The microphone ID, which must be >= 0.\n
-  /// <b><microphone><position></b> The position, expressed as "x y z".
-  ///   Each position coordinate must be separated by whitespace.\n
-  /// <b><microphone><volumedetectionthreshold></b> The minimum volume level
-  ///   the microphone can detect.
-  ///   This must be a value between 0.0 and 1.0 (representing 0% to 100%).
+  ///     * <id> The microphone ID, which must be unique and >= 0.
+  ///     * <pose> The pose, expressed as "x y z roll pitch yaw".
+  ///       Each pose coordinate must be separated by whitespace.
+  ///       The pose is defined relative to the plugin's parent element.
+  ///       So, if the plugin is used inside of a <model> tag, then the
+  ///       source's <pose> is relative to the model's pose.
+  ///       If the plugin is used inside of a <world> tag, then the source's
+  ///       <pose> is relative to the world (i.e., <pose> specifies an
+  ///       absolute pose).
+  ///     * <volumedetectionthreshold> The minimum volume level the microphone
+  ///       can detect. This must be a value between 0.0 and 1.0
+  ///       (representing 0% to 100%).
+  ///
+  /// Sources can be started and stopped via ignition service calls.
+  /// If a source is successfully created, the following services will be
+  /// created for the source (where <id> is the value specified in the source's
+  /// <id> tag from the SDF):
+  ///     * /play_source_<id>
+  ///         * Starts playing the source with the specified ID.
+  ///           If the source is already playing, nothing happens.
+  ///     * /stop_source_<id>
+  ///         * Stops playing the source with the specified ID.
+  ///           If the source is already stopped, nothing happens.
   class IGNITION_GAZEBO_VISIBLE LogicalAudioSensorPlugin :
     public System,
     public ISystemConfigure,
@@ -99,36 +120,18 @@ namespace systems
     public: ~LogicalAudioSensorPlugin() override;
 
     /// Documentation inherited
-    public: void Configure(const Entity &,
+    public: void Configure(const Entity &_entity,
                 const std::shared_ptr<const sdf::Element> &_sdf,
-                EntityComponentManager &,
-                EventManager &) override;
+                EntityComponentManager &_ecm,
+                EventManager &_eventMgr) override;
 
     // Documentation inherited
     public: void PreUpdate(const ignition::gazebo::UpdateInfo &_info,
-                ignition::gazebo::EntityComponentManager &) override;
+                ignition::gazebo::EntityComponentManager &_ecm) override;
 
     /// Documentation inherited
     public: void PostUpdate(const UpdateInfo &_info,
-                const EntityComponentManager &) override;
-
-    /// \brief Callback for a service call that can start playing an audio
-    ///   source. If the source specified in the service is already playing,
-    ///   nothing happens.
-    /// \param[in] _req The service request, which contains the ID of the source
-    ///   to start playing.
-    ///   If the ID given in the request doesn't match any of the existing audio
-    ///   source IDs, nothing happens.
-    private: void PlaySourceSrv(const ignition::msgs::UInt64 &_req);
-
-    /// \brief Callback for a service call that can stop playing an audio
-    ///   source. If the source specified in the service is already stopped,
-    ///   nothing happens.
-    /// \param[in] _req The service request, which contains the ID of the source
-    ///   to stop playing.
-    ///   If the ID given in the request doesn't match any of the existing audio
-    ///   source IDs, nothing happens.
-    private: void StopSourceSrv(const ignition::msgs::UInt64 &_req);
+                const EntityComponentManager &_ecm) override;
 
     /// \brief Private data pointer
     private: std::unique_ptr<LogicalAudioSensorPluginPrivate> dataPtr;
