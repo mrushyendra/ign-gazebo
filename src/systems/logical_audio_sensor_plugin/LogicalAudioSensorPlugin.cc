@@ -72,6 +72,14 @@ class ignition::gazebo::systems::LogicalAudioSensorPluginPrivate
   /// \param[out] _resp The service response, which is unused.
   private: bool StopSourceSrv(ignition::msgs::Empty &_resp);
 
+  /// \brief Checks if a source has exceeded its play duration.
+  /// \param[in] _simTimeInfo Information about the current simulation time.
+  /// \param[in] _sourcePlayInfo The source's playing information.
+  /// \returns true if the source's play duration has been exceeded,
+  /// false otherwise
+  public: bool DurationExceeded(const UpdateInfo &_simTimeInfo,
+               const logical_audio::SourcePlayInfo &_sourcePlayInfo);
+
   /// \brief Node used to handle the start source service
   public: ignition::transport::Node startSrvNode;
 
@@ -159,7 +167,9 @@ void LogicalAudioSensorPlugin::PreUpdate(const UpdateInfo &_info,
 
     // configure the source's play information before starting the simulation.
     // we must multiply playInfo.playDuration by the simulation time step
-    // in order to get an accurate duration comparison
+    // in order to ensure duration comparison is done using consistent time
+    // units (playInfo.playDuration is expressed in seconds, but the
+    // simulation time step may be expressed in something like milliseconds)
     if (this->dataPtr->firstTime)
     {
       playInfo.startTime = startTime;
@@ -171,8 +181,6 @@ void LogicalAudioSensorPlugin::PreUpdate(const UpdateInfo &_info,
     std::unique_lock<std::mutex> play_lock(this->dataPtr->playSourceMutex);
     if (this->dataPtr->playSource)
     {
-      if (!playInfo.playing)
-        ignerr << "starting source because of service call\n";
       playInfo.playing = true;
       playInfo.startTime = startTime;
       this->dataPtr->playSource = false;
@@ -183,27 +191,19 @@ void LogicalAudioSensorPlugin::PreUpdate(const UpdateInfo &_info,
     std::unique_lock<std::mutex> stop_lock(this->dataPtr->stopSourceMutex);
     if (this->dataPtr->stopSource)
     {
-      if (playInfo.playing)
-        ignerr << "stopping the source because of service call\n";
       playInfo.playing = false;
       this->dataPtr->stopSource = false;
     }
     stop_lock.unlock();
 
     // stop playing a source if the play duration has been exceeded
-    // (make sure the source doesn't have an infinite play duration)
-    auto currDuration = _info.simTime.count() - playInfo.startTime.count();
-    if ((playInfo.playDuration > 0u) && (currDuration > playInfo.playDuration))
-    {
-      if (playInfo.playing)
-        ignerr << "stopping the source because duration has exceeded\n";
+    if (this->dataPtr->DurationExceeded(_info, playInfo))
       playInfo.playing = false;
-    }
   }
 }
 
 //////////////////////////////////////////////////
-void LogicalAudioSensorPlugin::PostUpdate(const UpdateInfo &/*_info*/,
+void LogicalAudioSensorPlugin::PostUpdate(const UpdateInfo &_info,
                 const EntityComponentManager &_ecm)
 {
   // check to see which sources a microphone can hear
@@ -219,6 +219,11 @@ void LogicalAudioSensorPlugin::PostUpdate(const UpdateInfo &/*_info*/,
           const components::LogicalAudioSource *_source,
           const components::LogicalAudioSourcePlayInfo *_playInfo)
       {
+        // skip this source if the playing duration has been exceeded
+        // (this source will be stopped in the following PreUpdate call)
+        if (this->dataPtr->DurationExceeded(_info, _playInfo->Data()))
+          return true;
+
         const auto sourcePose = worldPose(_entity, _ecm);
         const auto vol = logical_audio::ComputeVolume(
             _playInfo->Data().playing,
@@ -241,7 +246,8 @@ void LogicalAudioSensorPlugin::PostUpdate(const UpdateInfo &/*_info*/,
           static std::mutex write_mutex;
           std::lock_guard<std::mutex> lock(write_mutex);
           ignmsg << "microphone " << micInfo.id << " detected source "
-            << _source->Data().id << "\n";
+            << _source->Data().id << " at sim time " << _info.simTime.count()
+            << "\n";
         }
 
         return true;
@@ -376,13 +382,15 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
   ss << "/play_source_" << id;
   if (!this->startSrvNode.Advertise(ss.str(),
         &LogicalAudioSensorPluginPrivate::PlaySourceSrv, this))
-    ignerr << "Error advertising the play source service\n";
+    ignerr << "Error advertising the play source service for source "
+      << id << "\n";
   ss.str("");
   ss.clear();
   ss << "/stop_source_" << id;
   if (!this->stopSrvNode.Advertise(ss.str(),
         &LogicalAudioSensorPluginPrivate::StopSourceSrv, this))
-    ignerr << "Error advertising the stop source service\n";
+    ignerr << "Error advertising the stop source service for source "
+      << id << "\n";
 }
 
 //////////////////////////////////////////////////
@@ -454,7 +462,6 @@ void LogicalAudioSensorPluginPrivate::CreateMicrophone(
 bool LogicalAudioSensorPluginPrivate::PlaySourceSrv(
     ignition::msgs::Empty &_resp)
 {
-  ignerr << "calling play service\n";
   std::lock_guard<std::mutex> lock(this->playSourceMutex);
   this->playSource = true;
   _resp.set_unused(true);
@@ -465,11 +472,26 @@ bool LogicalAudioSensorPluginPrivate::PlaySourceSrv(
 bool LogicalAudioSensorPluginPrivate::StopSourceSrv(
     ignition::msgs::Empty &_resp)
 {
-  ignerr << "calling stop service\n";
   std::lock_guard<std::mutex> lock(this->stopSourceMutex);
   this->stopSource = true;
   _resp.set_unused(true);
   return true;
+}
+
+//////////////////////////////////////////////////
+bool LogicalAudioSensorPluginPrivate::DurationExceeded(
+    const UpdateInfo &_simTimeInfo,
+    const logical_audio::SourcePlayInfo &_sourcePlayInfo)
+{
+  auto currDuration =
+    _simTimeInfo.simTime.count() - _sourcePlayInfo.startTime.count();
+
+  // make sure the source doesn't have an infinite play duration
+  if ((_sourcePlayInfo.playDuration > 0u) &&
+      (currDuration > _sourcePlayInfo.playDuration))
+    return true;
+
+  return false;
 }
 
 IGNITION_ADD_PLUGIN(LogicalAudioSensorPlugin,

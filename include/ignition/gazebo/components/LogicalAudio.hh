@@ -38,12 +38,12 @@ namespace logical_audio
   /// \brief Audio source attenuation functions.
   /// AttenuationFunction::Undefined is used to indicate that an
   /// attenuation function has not been defined yet.
-  enum class AttenuationFunction { Linear, Undefined };
+  enum class AttenuationFunction { LINEAR, UNDEFINED };
 
   /// \brief Audio source attenuation shapes.
   /// AttenuationShape::Undefined is used to indicate that an
   /// attenuation shape has not been defined yet.
-  enum class AttenuationShape { Sphere, Undefined };
+  enum class AttenuationShape { SPHERE, UNDEFINED };
 
   /// \brief Properties of a logical audio source.
   /// A source also has a pose, which can be stored as a component of a

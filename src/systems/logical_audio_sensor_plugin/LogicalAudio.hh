@@ -41,7 +41,8 @@ namespace logical_audio
   /// device with a higher detection threshold.
   /// \return true if the listening device can detect volume at _volumeLevel,
   /// false otherwise.
-  bool Detect(const double _volumeLevel, const double _volumeDetectionThreshold);
+  bool Detect(const double _volumeLevel,
+      const double _volumeDetectionThreshold);
 
   /// \brief Computes the volume level of an audio source at a certain location.
   /// \note Users should call

@@ -33,12 +33,12 @@ namespace logical_audio
   /// \brief A map to help convert user-input strings to the proper
   ///   attenuation function.
   const std::unordered_map<std::string, AttenuationFunction>
-    kAttFuncMap {{"linear", AttenuationFunction::Linear}};
+    kAttFuncMap {{"linear", AttenuationFunction::LINEAR}};
 
   /// \brief A map to help convert user-input strings to the proper
   ///   attenuation shape.
   const std::unordered_map<std::string, AttenuationShape>
-    kAttShapeMap {{"sphere", AttenuationShape::Sphere}};
+    kAttShapeMap {{"sphere", AttenuationShape::SPHERE}};
 
   //////////////////////////////////////////////////
   bool Detect(const double _volumeLevel,
@@ -66,8 +66,8 @@ namespace logical_audio
       return 0.0;
 
     // make sure the source has a valid attenuation function and shape
-    if ((_attenuationFunc == AttenuationFunction::Undefined) ||
-        (_attenuationShape == AttenuationShape::Undefined))
+    if ((_attenuationFunc == AttenuationFunction::UNDEFINED) ||
+        (_attenuationShape == AttenuationShape::UNDEFINED))
       return -1.0;
     // make sure the audio source has a playing volume that's > 0
     else if (_sourceEmissionVolume < 0.00001)
@@ -75,14 +75,14 @@ namespace logical_audio
 
     auto dist = _sourcePose.Pos().Distance(_targetPose.Pos());
 
-    // Implementing AttenuationShape::Sphere for now since that's
+    // Implementing AttenuationShape::SPHERE for now since that's
     // the only attenuation shape that's available
     if (dist <= _innerRadius)
       return _sourceEmissionVolume;
     else if (dist >= _falloffDistance)
       return 0.0;
 
-    // Implementing AttenuationFunction::Linear for now since that's
+    // Implementing AttenuationFunction::LINEAR for now since that's
     // the only attenuation function that's available.
     //
     // The equation below was calculated as follows:
@@ -111,7 +111,7 @@ namespace logical_audio
     if (iter != kAttFuncMap.end())
       _attenuationFunc = iter->second;
     else
-      _attenuationFunc = AttenuationFunction::Undefined;
+      _attenuationFunc = AttenuationFunction::UNDEFINED;
   }
 
   //////////////////////////////////////////////////
@@ -125,7 +125,7 @@ namespace logical_audio
     if (iter != kAttShapeMap.end())
       _attenuationShape = iter->second;
     else
-      _attenuationShape = AttenuationShape::Undefined;
+      _attenuationShape = AttenuationShape::UNDEFINED;
   }
 
   //////////////////////////////////////////////////

@@ -27,7 +27,6 @@ using AttenuationShape = logical_audio::AttenuationShape;
 //////////////////////////////////////////////////
 TEST(LogicalAudioTest, Detect)
 {
-
   // expect a detection if the volume level is >= the detection threshold
   // (as long as the volume level is > 0.0)
   EXPECT_TRUE(logical_audio::Detect(1.0, 0.0));
@@ -52,132 +51,132 @@ TEST(LogicalAudioTest, ComputeVolume)
   // make sure computed volume is the source's emission volume inside of the
   // inner radius
   EXPECT_DOUBLE_EQ(1.0,
-      logical_audio::ComputeVolume(true, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 1.0, 1.0, 5.0,
+      logical_audio::ComputeVolume(true, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 1.0, 1.0, 5.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}));
   EXPECT_DOUBLE_EQ(1.0,
-      logical_audio::ComputeVolume(true, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 1.0, 1.0, 5.0,
+      logical_audio::ComputeVolume(true, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 1.0, 1.0, 5.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {0.5, 0.5, 0.5, 0.0, 0.0, 0.0}));
   EXPECT_DOUBLE_EQ(0.3,
-      logical_audio::ComputeVolume(true, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 0.3, 4.0, 5.0,
+      logical_audio::ComputeVolume(true, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 0.3, 4.0, 5.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {0.0, 2.0, 0.5, 1.0, 6.0, 9.0}));
 
   // check volume at the inner radius
   EXPECT_DOUBLE_EQ(1.0,
-      logical_audio::ComputeVolume(true, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 1.0, 1.0, 5.0,
+      logical_audio::ComputeVolume(true, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 1.0, 1.0, 5.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {1.0, 0.0, 0.0, 0.0, 0.0, 0.0}));
   EXPECT_DOUBLE_EQ(0.6,
-      logical_audio::ComputeVolume(true, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 0.6, 10.0, 25.0,
+      logical_audio::ComputeVolume(true, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 0.6, 10.0, 25.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {0.0, 0.0, 10.0, 0.5, 2.0, -0.1}));
 
   // check volume between the inner radius and falloff distance
   EXPECT_DOUBLE_EQ(0.5,
-      logical_audio::ComputeVolume(true, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 1.0, 1.0, 11.0,
+      logical_audio::ComputeVolume(true, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 1.0, 1.0, 11.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {6.0, 0.0, 0.0, 0.0, 0.0, 0.0}));
   EXPECT_DOUBLE_EQ(0.1,
-      logical_audio::ComputeVolume(true, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 1.0, 1.0, 11.0,
+      logical_audio::ComputeVolume(true, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 1.0, 1.0, 11.0,
         {0.0, 0.0, 0.0, -0.1, 0.6, 2.0},
         {10.0, 0.0, 0.0, 0.0, 0.0, 0.0}));
   EXPECT_DOUBLE_EQ(0.5,
-      logical_audio::ComputeVolume(true, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 1.0, 0.0, 10.0,
+      logical_audio::ComputeVolume(true, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 1.0, 0.0, 10.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {5.0, 0.0, 0.0, 0.0, 0.0, 0.0}));
   EXPECT_DOUBLE_EQ(0.75,
-      logical_audio::ComputeVolume(true, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 1.0, 0.0, 10.0,
+      logical_audio::ComputeVolume(true, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 1.0, 0.0, 10.0,
         {0.0, 0.0, 0.0, 0.8, 0.2, 5.0},
         {0.0, 2.5, 0.0, 1.0, 0.3, 9.0}));
   EXPECT_DOUBLE_EQ(0.125,
-      logical_audio::ComputeVolume(true, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 0.5, 0.0, 10.0,
+      logical_audio::ComputeVolume(true, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 0.5, 0.0, 10.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {0.0, 0.0, 7.5, -1.0, -0.3, 7.2}));
 
   // check volume at the falloff distance (make sure it is 0)
   EXPECT_DOUBLE_EQ(0.0,
-      logical_audio::ComputeVolume(true, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 1.0, 0.0, 10.0,
+      logical_audio::ComputeVolume(true, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 1.0, 0.0, 10.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {10.0, 0.0, 0.0, 0.0, 0.0, 0.0}));
   EXPECT_DOUBLE_EQ(0.0,
-      logical_audio::ComputeVolume(true, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 0.3, 2.0, 5.0,
+      logical_audio::ComputeVolume(true, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 0.3, 2.0, 5.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {3.0, 4.0, 0.0, 1.0, -0.5, 0.8}));
 
   // check volume past the falloff distance (make sure it is 0)
   EXPECT_DOUBLE_EQ(0.0,
-      logical_audio::ComputeVolume(true, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 1.0, 5.0, 10.0,
+      logical_audio::ComputeVolume(true, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 1.0, 5.0, 10.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {10.0, 10.0, 10.0, 0.0, 0.0, 0.0}));
   EXPECT_DOUBLE_EQ(0.0,
-      logical_audio::ComputeVolume(true, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 0.4, 5.0, 8.0,
+      logical_audio::ComputeVolume(true, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 0.4, 5.0, 8.0,
         {0.0, 0.0, 0.0, 1.0, 2.0, 3.0},
         {210.0, 15.0, 0.0, 1.0, 5.0, -0.7}));
 
   // make sure computed volume is 0 if source isn't playing
   EXPECT_DOUBLE_EQ(0.0,
-      logical_audio::ComputeVolume(false, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 1.0, 10.0, 100.0,
+      logical_audio::ComputeVolume(false, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 1.0, 10.0, 100.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {0.0, 0.0, 5.0, 0.0, 0.0, 0.0}));
   EXPECT_DOUBLE_EQ(0.0,
-      logical_audio::ComputeVolume(false, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 0.5, 10.0, 100.0,
+      logical_audio::ComputeVolume(false, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 0.5, 10.0, 100.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}));
   EXPECT_DOUBLE_EQ(0.0,
-      logical_audio::ComputeVolume(false, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 0.0, 10.0, 100.0,
+      logical_audio::ComputeVolume(false, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 0.0, 10.0, 100.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {1.0, 0.0, 0.0, 0.0, 0.0, 0.0}));
   EXPECT_DOUBLE_EQ(0.0,
-      logical_audio::ComputeVolume(false, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 0.8, 0.0, 100.0,
+      logical_audio::ComputeVolume(false, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 0.8, 0.0, 100.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {50.0, 0.0, 0.0, 0.0, 0.0, 0.0}));
   EXPECT_DOUBLE_EQ(0.0,
-      logical_audio::ComputeVolume(false, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 0.8, 0.0, 100.0,
+      logical_audio::ComputeVolume(false, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 0.8, 0.0, 100.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {500.0, 0.0, 0.0, 0.0, 0.0, 0.0}));
 
   // make sure undefined attenuation functions and shapes are handled
   EXPECT_DOUBLE_EQ(-1.0,
-      logical_audio::ComputeVolume(true, AttenuationFunction::Undefined,
-        AttenuationShape::Sphere, 1.0, 10.0, 100.0,
+      logical_audio::ComputeVolume(true, AttenuationFunction::UNDEFINED,
+        AttenuationShape::SPHERE, 1.0, 10.0, 100.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {0.0, 0.0, 5.0, 0.0, 0.0, 0.0}));
   EXPECT_DOUBLE_EQ(-1.0,
-      logical_audio::ComputeVolume(true, AttenuationFunction::Linear,
-        AttenuationShape::Undefined, 1.0, 10.0, 100.0,
+      logical_audio::ComputeVolume(true, AttenuationFunction::LINEAR,
+        AttenuationShape::UNDEFINED, 1.0, 10.0, 100.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {0.0, 0.0, 5.0, 0.0, 0.0, 0.0}));
 
   // make sure computed volume is always 0 if source emission volume is 0
   EXPECT_DOUBLE_EQ(0.0,
-      logical_audio::ComputeVolume(true, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 0.0, 10.0, 100.0,
+      logical_audio::ComputeVolume(true, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 0.0, 10.0, 100.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}));
   EXPECT_DOUBLE_EQ(0.0,
-      logical_audio::ComputeVolume(true, AttenuationFunction::Linear,
-        AttenuationShape::Sphere, 0.0, 10.0, 100.0,
+      logical_audio::ComputeVolume(true, AttenuationFunction::LINEAR,
+        AttenuationShape::SPHERE, 0.0, 10.0, 100.0,
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {20.0, 20.0, 20.0, 0.0, 0.0, 0.0}));
 }
@@ -186,60 +185,60 @@ TEST(LogicalAudioTest, ComputeVolume)
 TEST(LogicalAudioTest, AttenuationSetters)
 {
   // test valid attenuation function strings
-  AttenuationFunction func = AttenuationFunction::Undefined;
-  EXPECT_EQ(AttenuationFunction::Undefined, func);
+  AttenuationFunction func = AttenuationFunction::UNDEFINED;
+  EXPECT_EQ(AttenuationFunction::UNDEFINED, func);
   logical_audio::SetAttenuationFunction(func, "linear");
-  EXPECT_EQ(AttenuationFunction::Linear, func);
-  func = AttenuationFunction::Undefined;
-  EXPECT_EQ(AttenuationFunction::Undefined, func);
+  EXPECT_EQ(AttenuationFunction::LINEAR, func);
+  func = AttenuationFunction::UNDEFINED;
+  EXPECT_EQ(AttenuationFunction::UNDEFINED, func);
   logical_audio::SetAttenuationFunction(func, "LINEAR");
-  EXPECT_EQ(AttenuationFunction::Linear, func);
-  func = AttenuationFunction::Undefined;
-  EXPECT_EQ(AttenuationFunction::Undefined, func);
+  EXPECT_EQ(AttenuationFunction::LINEAR, func);
+  func = AttenuationFunction::UNDEFINED;
+  EXPECT_EQ(AttenuationFunction::UNDEFINED, func);
   logical_audio::SetAttenuationFunction(func, "LiNeaR");
-  EXPECT_EQ(AttenuationFunction::Linear, func);
+  EXPECT_EQ(AttenuationFunction::LINEAR, func);
 
   // test valid attenuation shape strings
-  AttenuationShape shape = AttenuationShape::Undefined;
-  EXPECT_EQ(AttenuationShape::Undefined, shape);
+  AttenuationShape shape = AttenuationShape::UNDEFINED;
+  EXPECT_EQ(AttenuationShape::UNDEFINED, shape);
   logical_audio::SetAttenuationShape(shape, "sphere");
-  EXPECT_EQ(AttenuationShape::Sphere, shape);
-  shape = AttenuationShape::Undefined;
-  EXPECT_EQ(AttenuationShape::Undefined, shape);
+  EXPECT_EQ(AttenuationShape::SPHERE, shape);
+  shape = AttenuationShape::UNDEFINED;
+  EXPECT_EQ(AttenuationShape::UNDEFINED, shape);
   logical_audio::SetAttenuationShape(shape, "SPHERE");
-  EXPECT_EQ(AttenuationShape::Sphere, shape);
-  shape = AttenuationShape::Undefined;
-  EXPECT_EQ(AttenuationShape::Undefined, shape);
+  EXPECT_EQ(AttenuationShape::SPHERE, shape);
+  shape = AttenuationShape::UNDEFINED;
+  EXPECT_EQ(AttenuationShape::UNDEFINED, shape);
   logical_audio::SetAttenuationShape(shape, "sPHerE");
-  EXPECT_EQ(AttenuationShape::Sphere, shape);
+  EXPECT_EQ(AttenuationShape::SPHERE, shape);
 
   // test invalid attenuation function strings
-  func = AttenuationFunction::Linear;
-  EXPECT_EQ(AttenuationFunction::Linear, func);
+  func = AttenuationFunction::LINEAR;
+  EXPECT_EQ(AttenuationFunction::LINEAR, func);
   logical_audio::SetAttenuationFunction(func, "linear ");
-  EXPECT_EQ(AttenuationFunction::Undefined, func);
-  func = AttenuationFunction::Linear;
-  EXPECT_EQ(AttenuationFunction::Linear, func);
+  EXPECT_EQ(AttenuationFunction::UNDEFINED, func);
+  func = AttenuationFunction::LINEAR;
+  EXPECT_EQ(AttenuationFunction::LINEAR, func);
   logical_audio::SetAttenuationFunction(func, " LINEAR");
-  EXPECT_EQ(AttenuationFunction::Undefined, func);
-  func = AttenuationFunction::Linear;
-  EXPECT_EQ(AttenuationFunction::Linear, func);
+  EXPECT_EQ(AttenuationFunction::UNDEFINED, func);
+  func = AttenuationFunction::LINEAR;
+  EXPECT_EQ(AttenuationFunction::LINEAR, func);
   logical_audio::SetAttenuationFunction(func, "some random string");
-  EXPECT_EQ(AttenuationFunction::Undefined, func);
+  EXPECT_EQ(AttenuationFunction::UNDEFINED, func);
 
   // test invalid attenuation shape strings
-  shape = AttenuationShape::Sphere;
-  EXPECT_EQ(AttenuationShape::Sphere, shape);
+  shape = AttenuationShape::SPHERE;
+  EXPECT_EQ(AttenuationShape::SPHERE, shape);
   logical_audio::SetAttenuationShape(shape, " sphere ");
-  EXPECT_EQ(AttenuationShape::Undefined, shape);
-  shape = AttenuationShape::Sphere;
-  EXPECT_EQ(AttenuationShape::Sphere, shape);
+  EXPECT_EQ(AttenuationShape::UNDEFINED, shape);
+  shape = AttenuationShape::SPHERE;
+  EXPECT_EQ(AttenuationShape::SPHERE, shape);
   logical_audio::SetAttenuationShape(shape, "SPHERE ");
-  EXPECT_EQ(AttenuationShape::Undefined, shape);
-  shape = AttenuationShape::Sphere;
-  EXPECT_EQ(AttenuationShape::Sphere, shape);
+  EXPECT_EQ(AttenuationShape::UNDEFINED, shape);
+  shape = AttenuationShape::SPHERE;
+  EXPECT_EQ(AttenuationShape::SPHERE, shape);
   logical_audio::SetAttenuationShape(shape, "hello, world!");
-  EXPECT_EQ(AttenuationShape::Undefined, shape);
+  EXPECT_EQ(AttenuationShape::UNDEFINED, shape);
 }
 
 //////////////////////////////////////////////////
@@ -262,17 +261,20 @@ TEST(LogicalAudioTest, SourceComponentValidators)
   // make sure invalid inner radius and falloff distance are changed
   innerRadius = 1.0;
   falloffDistance = 0.5;
-  logical_audio::ValidateInnerRadiusAndFalloffDistance(innerRadius, falloffDistance);
+  logical_audio::ValidateInnerRadiusAndFalloffDistance(innerRadius,
+      falloffDistance);
   EXPECT_DOUBLE_EQ(1.0, innerRadius);
   EXPECT_DOUBLE_EQ(2.0, falloffDistance);
   innerRadius = -1.0;
   falloffDistance = 0.5;
-  logical_audio::ValidateInnerRadiusAndFalloffDistance(innerRadius, falloffDistance);
+  logical_audio::ValidateInnerRadiusAndFalloffDistance(innerRadius,
+      falloffDistance);
   EXPECT_DOUBLE_EQ(0.0, innerRadius);
   EXPECT_DOUBLE_EQ(0.5, falloffDistance);
   innerRadius = -1.0;
   falloffDistance = -0.5;
-  logical_audio::ValidateInnerRadiusAndFalloffDistance(innerRadius, falloffDistance);
+  logical_audio::ValidateInnerRadiusAndFalloffDistance(innerRadius,
+      falloffDistance);
   EXPECT_DOUBLE_EQ(0.0, innerRadius);
   EXPECT_DOUBLE_EQ(1.0, falloffDistance);
 

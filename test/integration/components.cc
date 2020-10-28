@@ -808,8 +808,8 @@ TEST_F(ComponentsTest, LogicalAudioSource)
 {
   logical_audio::Source source1;
   source1.id = 0;
-  source1.attFunc = logical_audio::AttenuationFunction::Linear;
-  source1.attShape = logical_audio::AttenuationShape::Undefined;
+  source1.attFunc = logical_audio::AttenuationFunction::LINEAR;
+  source1.attShape = logical_audio::AttenuationShape::UNDEFINED;
   source1.innerRadius = 0.25;
   source1.falloffDistance = 5.0;
   source1.emissionVolume = 1.0;
