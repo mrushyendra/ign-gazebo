@@ -17,6 +17,7 @@
 
 #include "LogicalAudioSensorPlugin.hh"
 
+#include <chrono>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -165,15 +166,10 @@ void LogicalAudioSensorPlugin::PreUpdate(const UpdateInfo &_info,
     auto& playInfo = _ecm.Component<components::LogicalAudioSourcePlayInfo>(
         this->dataPtr->sourceEntity)->Data();
 
-    // configure the source's play information before starting the simulation.
-    // we must multiply playInfo.playDuration by the simulation time step
-    // in order to ensure duration comparison is done using consistent time
-    // units (playInfo.playDuration is expressed in seconds, but the
-    // simulation time step may be expressed in something like milliseconds)
+    // configure the source's play information before starting the simulation
     if (this->dataPtr->firstTime)
     {
       playInfo.startTime = startTime;
-      playInfo.playDuration *= _info.dt.count();
       this->dataPtr->firstTime = false;
     }
 
@@ -483,12 +479,12 @@ bool LogicalAudioSensorPluginPrivate::DurationExceeded(
     const UpdateInfo &_simTimeInfo,
     const logical_audio::SourcePlayInfo &_sourcePlayInfo)
 {
-  auto currDuration =
-    _simTimeInfo.simTime.count() - _sourcePlayInfo.startTime.count();
+  auto currDuration = _simTimeInfo.simTime - _sourcePlayInfo.startTime;
+  auto maxDuration = _sourcePlayInfo.startTime +
+    std::chrono::seconds(_sourcePlayInfo.playDuration);
 
   // make sure the source doesn't have an infinite play duration
-  if ((_sourcePlayInfo.playDuration > 0u) &&
-      (currDuration > _sourcePlayInfo.playDuration))
+  if ((_sourcePlayInfo.playDuration > 0u) && (currDuration > maxDuration))
     return true;
 
   return false;

@@ -135,7 +135,7 @@
           <falloffdistance>5.0</falloffdistance>
           <volumelevel>.8</volumelevel>
           <playing>true</playing>
-          <playduration>50000</playduration>
+          <playduration>10</playduration>
         </source>
       </plugin>
     </model>
