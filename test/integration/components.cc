@@ -850,12 +850,12 @@ TEST_F(ComponentsTest, LogicalAudioSourcePlayInfo)
 
   logical_audio::SourcePlayInfo playInfo1;
   playInfo1.playing = true;
-  playInfo1.playDuration = 0;
+  playInfo1.playDuration = std::chrono::seconds(1);
   playInfo1.startTime = end - start;
 
   logical_audio::SourcePlayInfo playInfo2;
   playInfo2.playing = false;
-  playInfo2.playDuration = 5;
+  playInfo2.playDuration = std::chrono::seconds(5);
   playInfo2.startTime = end - start;
 
   // create components
@@ -870,7 +870,7 @@ TEST_F(ComponentsTest, LogicalAudioSourcePlayInfo)
   // stream operators
   std::ostringstream ostr;
   comp1.Serialize(ostr);
-  EXPECT_EQ("1 0 1000", ostr.str());
+  EXPECT_EQ("1 1 1000", ostr.str());
 
   std::istringstream istr(ostr.str());
   components::LogicalAudioSourcePlayInfo comp3;

@@ -367,7 +367,7 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
   // save the source's playing information as a component
   logical_audio::SourcePlayInfo playInfo;
   playInfo.playing = playing;
-  playInfo.playDuration = playDuration;
+  playInfo.playDuration = std::chrono::seconds(playDuration);
   _ecm.CreateComponent(entity,
       components::LogicalAudioSourcePlayInfo(playInfo));
 
@@ -480,11 +480,10 @@ bool LogicalAudioSensorPluginPrivate::DurationExceeded(
     const logical_audio::SourcePlayInfo &_sourcePlayInfo)
 {
   auto currDuration = _simTimeInfo.simTime - _sourcePlayInfo.startTime;
-  auto maxDuration = _sourcePlayInfo.startTime +
-    std::chrono::seconds(_sourcePlayInfo.playDuration);
 
   // make sure the source doesn't have an infinite play duration
-  if ((_sourcePlayInfo.playDuration > 0u) && (currDuration > maxDuration))
+  if ((_sourcePlayInfo.playDuration.count() > 0) &&
+      (currDuration > _sourcePlayInfo.playDuration))
     return true;
 
   return false;

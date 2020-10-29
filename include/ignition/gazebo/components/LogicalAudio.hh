@@ -95,7 +95,7 @@ namespace logical_audio
 
     /// \brief How long the source should play for, in seconds.
     /// Setting this to 0 means the source has a play duration of infinity
-    unsigned int playDuration;
+    std::chrono::seconds playDuration;
 
     /// \brief The time at which the source most recently started playing
     std::chrono::steady_clock::duration startTime;
@@ -190,9 +190,9 @@ namespace serializers
   inline std::istream &operator>>(std::istream &_in,
       std::chrono::steady_clock::duration &_dur)
   {
-    int64_t time;
+    uint64_t time;
     _in >> time;
-    _dur = std::chrono::duration<int64_t, std::milli>(time);
+    _dur = std::chrono::duration<uint64_t, std::milli>(time);
     return _in;
   }
 
@@ -236,7 +236,7 @@ namespace serializers
     public: static std::ostream &Serialize(std::ostream &_out,
                 const logical_audio::SourcePlayInfo &_playInfo)
     {
-      _out << _playInfo.playing << " " << _playInfo.playDuration << " "
+      _out << _playInfo.playing << " " << _playInfo.playDuration.count() << " "
         << _playInfo.startTime;
       return _out;
     }
@@ -248,8 +248,9 @@ namespace serializers
     public: static std::istream &Deserialize(std::istream &_in,
                 logical_audio::SourcePlayInfo &_playInfo)
     {
-      _in >> _playInfo.playing >> _playInfo.playDuration
-        >> _playInfo.startTime;
+      uint64_t count;
+      _in >> _playInfo.playing >> count >> _playInfo.startTime;
+      _playInfo.playDuration = std::chrono::seconds(count);
       return _in;
     }
   };
