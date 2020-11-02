@@ -181,7 +181,7 @@ namespace serializers
   inline std::ostream &operator<<(std::ostream &_out,
       const std::chrono::steady_clock::duration &_dur)
   {
-    _out << std::chrono::duration_cast<std::chrono::milliseconds>(
+    _out << std::chrono::duration_cast<std::chrono::nanoseconds>(
         _dur).count();
     return _out;
   }
@@ -190,9 +190,9 @@ namespace serializers
   inline std::istream &operator>>(std::istream &_in,
       std::chrono::steady_clock::duration &_dur)
   {
-    uint64_t time;
+    int64_t time;
     _in >> time;
-    _dur = std::chrono::duration<uint64_t, std::milli>(time);
+    _dur = std::chrono::duration<int64_t, std::nano>(time);
     return _in;
   }
 

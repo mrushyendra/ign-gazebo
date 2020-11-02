@@ -870,7 +870,7 @@ TEST_F(ComponentsTest, LogicalAudioSourcePlayInfo)
   // stream operators
   std::ostringstream ostr;
   comp1.Serialize(ostr);
-  EXPECT_EQ("1 1 1000", ostr.str());
+  EXPECT_EQ("1 1 1000000000", ostr.str());
 
   std::istringstream istr(ostr.str());
   components::LogicalAudioSourcePlayInfo comp3;
