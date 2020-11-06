@@ -41,7 +41,7 @@ namespace logical_audio
   /// device with a higher detection threshold.
   /// \return true if the listening device can detect volume at _volumeLevel,
   /// false otherwise.
-  bool Detect(const double _volumeLevel,
+  bool detect(const double _volumeLevel,
       const double _volumeDetectionThreshold);
 
   /// \brief Computes the volume level of an audio source at a certain location.
@@ -62,7 +62,7 @@ namespace logical_audio
   /// \return The volume level at this location.
   /// If the attenuation function or shape is undefined, -1.0 is returned.
   /// If the source is not playing, 0.0 is returned.
-  double ComputeVolume(const bool _playing,
+  double computeVolume(const bool _playing,
       const AttenuationFunction _attenuationFunc,
       const AttenuationShape _attenuationShape,
       const double _sourceEmissionVolume,
@@ -84,7 +84,7 @@ namespace logical_audio
   /// the calculated attenuation function.
   /// \param[in] _str A string that should map to a value in
   /// AttenuationFunction.
-  void SetAttenuationFunction(AttenuationFunction &_attenuationFunc,
+  void setAttenuationFunction(AttenuationFunction &_attenuationFunc,
       std::string _str);
 
   /// \brief Set the attenuation shape that matches the defined string.
@@ -99,7 +99,7 @@ namespace logical_audio
   /// calculated attenuation shape.
   /// \param[in] _str A string that should map to a value in
   ///   AttenuationShape.
-  void SetAttenuationShape(AttenuationShape &_attenuationShape,
+  void setAttenuationShape(AttenuationShape &_attenuationShape,
       std::string _str);
 
   /// \brief Validate the inner radius and falloff distance for an audio source.
@@ -111,14 +111,14 @@ namespace logical_audio
   /// source. This value must be greater than _innerRadius.
   /// If _falloffDistance < _innerRadius, _falloffDistance will be set to
   /// _innerRadius + 1 (assuming that _innerRadius is valid).
-  void ValidateInnerRadiusAndFalloffDistance(double &_innerRadius,
+  void validateInnerRadiusAndFalloffDistance(double &_innerRadius,
       double &_falloffDistance);
 
   /// \brief Validate a source's emission volume level.
   /// \param[in,out] _volumeLevel The volume the source should play at.
   /// This parameter is checked (and possibly clipped) to ensure that it falls
   /// between 0.0 (0% volume) and 1.0 (100% volume).
-  void ValidateVolumeLevel(double &_volumeLevel);
+  void validateVolumeLevel(double &_volumeLevel);
 }
 }
 }

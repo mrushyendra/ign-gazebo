@@ -21,7 +21,6 @@
 #include <mutex>
 #include <sstream>
 #include <string>
-#include <unordered_set>
 
 #include <ignition/gazebo/components/LogicalAudio.hh>
 #include <ignition/gazebo/components/Model.hh>
@@ -81,11 +80,11 @@ class ignition::gazebo::systems::LogicalAudioSensorPluginPrivate
   public: bool DurationExceeded(const UpdateInfo &_simTimeInfo,
                const logical_audio::SourcePlayInfo &_sourcePlayInfo);
 
-  /// \brief Node used to handle the start source service
-  public: ignition::transport::Node startSrvNode;
+  /// \brief Node used to create publishers and services
+  public: ignition::transport::Node node;
 
-  /// \brief Node used to handle the stop source service
-  public: ignition::transport::Node stopSrvNode;
+  /// \brief Publishes microphone detection information
+  public: ignition::transport::Node::Publisher micDetectionPub;
 
   /// \brief A flag used to initialize a source's playing information
   /// before starting simulation.
@@ -209,6 +208,14 @@ void LogicalAudioSensorPlugin::PostUpdate(const UpdateInfo &_info,
     const auto micInfo = _ecm.Component<components::LogicalMicrophone>(
         this->dataPtr->micEntity)->Data();
 
+    // get the current sim time so that it can be placed in the header
+    // of microphone detection messages
+    const auto simSeconds =
+      std::chrono::duration_cast<std::chrono::seconds>(_info.simTime);
+    const auto simNanoseconds =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(_info.simTime);
+    const auto nanosecondOffset = (simNanoseconds - simSeconds).count();
+
     _ecm.Each<components::LogicalAudioSource,
               components::LogicalAudioSourcePlayInfo>(
       [&](const Entity &_entity,
@@ -221,7 +228,7 @@ void LogicalAudioSensorPlugin::PostUpdate(const UpdateInfo &_info,
           return true;
 
         const auto sourcePose = worldPose(_entity, _ecm);
-        const auto vol = logical_audio::ComputeVolume(
+        const auto vol = logical_audio::computeVolume(
             _playInfo->Data().playing,
             _source->Data().attFunc,
             _source->Data().attShape,
@@ -231,19 +238,21 @@ void LogicalAudioSensorPlugin::PostUpdate(const UpdateInfo &_info,
             sourcePose,
             micPose);
 
-        if (logical_audio::Detect(vol, micInfo.volumeDetectionThreshold))
+        if (logical_audio::detect(vol, micInfo.volumeDetectionThreshold))
         {
-          // TODO(adlarkin) let others know that a detection occurred,
-          // perhaps by publishing a message to a topic?
+          // publish the source that the microphone heard, along with the
+          // volume level the microphone detected. The detected source's
+          // ID is embedded in the message's header
+          ignition::msgs::Double msg;
+          auto header = msg.mutable_header();
+          auto timeStamp = header->mutable_stamp();
+          timeStamp->set_sec(simSeconds.count());
+          timeStamp->set_nsec(nanosecondOffset);
+          auto headerData = header->add_data();
+          headerData->set_key(std::to_string(_source->Data().id));
+          msg.set_data(vol);
 
-          // using a static mutex temporarily so that it's easy to
-          // read console output (in case multiple microphones can detect
-          // a source in the same time step)
-          static std::mutex write_mutex;
-          std::lock_guard<std::mutex> lock(write_mutex);
-          ignmsg << "microphone " << micInfo.id << " detected source "
-            << _source->Data().id << " at sim time " << _info.simTime.count()
-            << "\n";
+          this->dataPtr->micDetectionPub.Publish(msg);
         }
 
         return true;
@@ -258,8 +267,6 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
     EntityComponentManager &_ecm,
     SdfEntityCreator &_sdfEntityCreator)
 {
-  static std::unordered_set<unsigned int> sourceIDs;
-
   static const std::string kSourceSkipMsg =
     "Skipping the creation of this source.\n";
 
@@ -271,13 +278,22 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
   const auto id = _elem->Get<unsigned int>("id");
 
   // make sure no other sources exist with the same ID
-  if (sourceIDs.find(id) != sourceIDs.end())
-  {
-    ignerr << "The specified source ID already exists for "
-      << "another source. " << kSourceSkipMsg;
+  bool duplicate = false;
+  _ecm.Each<components::LogicalAudioSource>(
+    [&](const Entity &/*_entity*/,
+        const components::LogicalAudioSource *_source)
+    {
+      if (_source->Data().id == id)
+      {
+        ignerr << "The specified source ID already exists for "
+          << "another source. " << kSourceSkipMsg;
+        duplicate = true;
+        return false;
+      }
+      return true;
+    });
+  if (duplicate)
     return;
-  }
-  sourceIDs.insert(id);
 
   if (!_elem->HasElement("pose"))
   {
@@ -286,40 +302,40 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
   }
   const auto pose = _elem->Get<ignition::math::Pose3d>("pose");
 
-  if (!_elem->HasElement("attenuationfunction"))
+  if (!_elem->HasElement("attenuation_function"))
   {
     ignerr << "Audio source has no attenuation function. " << kSourceSkipMsg;
     return;
   }
-  const auto attenuationFunc = _elem->Get<std::string>("attenuationfunction");
+  const auto attenuationFunc = _elem->Get<std::string>("attenuation_function");
 
-  if (!_elem->HasElement("attenuationshape"))
+  if (!_elem->HasElement("attenuation_shape"))
   {
     ignerr << "Audio source has no attenuation shape. " << kSourceSkipMsg;
     return;
   }
-  const auto attenuationShape = _elem->Get<std::string>("attenuationshape");
+  const auto attenuationShape = _elem->Get<std::string>("attenuation_shape");
 
-  if (!_elem->HasElement("innerradius"))
+  if (!_elem->HasElement("inner_radius"))
   {
     ignerr << "Audio source has no inner radius. " << kSourceSkipMsg;
     return;
   }
-  const auto innerRadius = _elem->Get<double>("innerRadius");
+  const auto innerRadius = _elem->Get<double>("inner_radius");
 
-  if (!_elem->HasElement("falloffdistance"))
+  if (!_elem->HasElement("falloff_distance"))
   {
     ignerr << "Audio source is missing a falloff distance. " << kSourceSkipMsg;
     return;
   }
-  const auto falloffDistance = _elem->Get<double>("falloffdistance");
+  const auto falloffDistance = _elem->Get<double>("falloff_distance");
 
-  if (!_elem->HasElement("volumelevel"))
+  if (!_elem->HasElement("volume_level"))
   {
     ignerr << "Audio source is missing a volume level. " << kSourceSkipMsg;
     return;
   }
-  const auto volumeLevel = _elem->Get<double>("volumelevel");
+  const auto volumeLevel = _elem->Get<double>("volume_level");
 
   if (!_elem->HasElement("playing"))
   {
@@ -329,12 +345,33 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
   }
   const auto playing = _elem->Get<bool>("playing");
 
-  if (!_elem->HasElement("playduration"))
+  if (!_elem->HasElement("play_duration"))
   {
     ignerr << "Audio source is missing the play duration. " << kSourceSkipMsg;
     return;
   }
-  const auto playDuration = _elem->Get<unsigned int>("playduration");
+  const auto playDuration = _elem->Get<unsigned int>("play_duration");
+
+  // create services for this source
+  std::stringstream ss;
+  ss << "/play_source_" << id;
+  if (!this->node.Advertise(ss.str(),
+        &LogicalAudioSensorPluginPrivate::PlaySourceSrv, this))
+  {
+    ignerr << "Error advertising the play source service for source "
+      << id << ". " << kSourceSkipMsg;
+    return;
+  }
+  ss.str("");
+  ss.clear();
+  ss << "/stop_source_" << id;
+  if (!this->node.Advertise(ss.str(),
+        &LogicalAudioSensorPluginPrivate::StopSourceSrv, this))
+  {
+    ignerr << "Error advertising the stop source service for source "
+      << id << ". " << kSourceSkipMsg;
+    return;
+  }
 
   // create an audio source entity
   auto entity = _ecm.CreateEntity();
@@ -349,15 +386,15 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
   // save the audio source properties as a component
   logical_audio::Source source;
   source.id = id;
-  logical_audio::SetAttenuationFunction(source.attFunc, attenuationFunc);
-  logical_audio::SetAttenuationShape(source.attShape, attenuationShape);
+  logical_audio::setAttenuationFunction(source.attFunc, attenuationFunc);
+  logical_audio::setAttenuationShape(source.attShape, attenuationShape);
   source.innerRadius = innerRadius;
   source.falloffDistance = falloffDistance;
-  logical_audio::ValidateInnerRadiusAndFalloffDistance(
+  logical_audio::validateInnerRadiusAndFalloffDistance(
       source.innerRadius,
       source.falloffDistance);
   source.emissionVolume = volumeLevel;
-  logical_audio::ValidateVolumeLevel(source.emissionVolume);
+  logical_audio::validateVolumeLevel(source.emissionVolume);
   _ecm.CreateComponent(entity, components::LogicalAudioSource(source));
 
   // save the source's pose as a component
@@ -372,21 +409,6 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
       components::LogicalAudioSourcePlayInfo(playInfo));
 
   this->sourceEntity = entity;
-
-  // create services for this source
-  std::stringstream ss;
-  ss << "/play_source_" << id;
-  if (!this->startSrvNode.Advertise(ss.str(),
-        &LogicalAudioSensorPluginPrivate::PlaySourceSrv, this))
-    ignerr << "Error advertising the play source service for source "
-      << id << "\n";
-  ss.str("");
-  ss.clear();
-  ss << "/stop_source_" << id;
-  if (!this->stopSrvNode.Advertise(ss.str(),
-        &LogicalAudioSensorPluginPrivate::StopSourceSrv, this))
-    ignerr << "Error advertising the stop source service for source "
-      << id << "\n";
 }
 
 //////////////////////////////////////////////////
@@ -396,8 +418,6 @@ void LogicalAudioSensorPluginPrivate::CreateMicrophone(
     EntityComponentManager &_ecm,
     SdfEntityCreator &_sdfEntityCreator)
 {
-  static std::unordered_set<unsigned int> microphoneIDs;
-
   static const std::string kMicSkipMsg =
     "Skipping the creation of this microphone.\n";
 
@@ -409,13 +429,22 @@ void LogicalAudioSensorPluginPrivate::CreateMicrophone(
   const auto id = _elem->Get<unsigned int>("id");
 
   // make sure no other microphones exist with the same ID
-  if (microphoneIDs.find(id) != microphoneIDs.end())
-  {
-    ignerr << "The specified microphone ID already exists for "
-      << "another microphone. " << kMicSkipMsg;
+  bool duplicate = false;
+  _ecm.Each<components::LogicalMicrophone>(
+    [&](const Entity &/*_entity*/,
+        const components::LogicalMicrophone *_mic)
+    {
+      if (_mic->Data().id == id)
+      {
+        ignerr << "The specified microphone ID already exists for "
+          << "another microphone. " << kMicSkipMsg;
+        duplicate = true;
+        return false;
+      }
+      return true;
+    });
+  if (duplicate)
     return;
-  }
-  microphoneIDs.insert(id);
 
   if (!_elem->HasElement("pose"))
   {
@@ -424,12 +453,24 @@ void LogicalAudioSensorPluginPrivate::CreateMicrophone(
   }
   const auto pose = _elem->Get<ignition::math::Pose3d>("pose");
 
-  if (!_elem->HasElement("volumethreshold"))
+  if (!_elem->HasElement("volume_threshold"))
   {
     ignerr << "Microphone is missing a volume threshold. " << kMicSkipMsg;
     return;
   }
-  const auto volumeDetectionThreshold = _elem->Get<double>("volumethreshold");
+  const auto volumeDetectionThreshold = _elem->Get<double>("volume_threshold");
+
+  // create the detection publisher for this microphone
+  std::stringstream ss;
+  ss << "/mic_" << id << "_detection";
+  this->micDetectionPub =
+    this->node.Advertise<ignition::msgs::Double>(ss.str());
+  if (!this->micDetectionPub)
+  {
+    ignerr << "Error creating a detection publisher for microphone "
+      << id << ". " << kMicSkipMsg;
+    return;
+  }
 
   // create a microphone entity
   auto entity = _ecm.CreateEntity();

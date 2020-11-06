@@ -129,13 +129,13 @@
         <source>
           <id>1</id>
           <pose>.5 0 0 0 0 0</pose>
-          <attenuationfunction> linear</attenuationfunction>
-          <attenuationshape>sphere</attenuationshape>
-          <innerradius>1.0</innerradius>
-          <falloffdistance>5.0</falloffdistance>
-          <volumelevel>.8</volumelevel>
+          <attenuation_function> linear</attenuation_function>
+          <attenuation_shape>sphere</attenuation_shape>
+          <inner_radius>1.0</inner_radius>
+          <falloff_distance>5.0</falloff_distance>
+          <volume_level>.8</volume_level>
           <playing>true</playing>
-          <playduration>10</playduration>
+          <play_duration>10</play_duration>
         </source>
       </plugin>
     </model>
@@ -178,13 +178,13 @@
         <source>
           <id>2</id>
           <pose>0 0 0 0 0 0</pose>
-          <attenuationfunction>linear</attenuationfunction>
-          <attenuationshape>sphere</attenuationshape>
-          <innerradius>5.0</innerradius>
-          <falloffdistance>100.0</falloffdistance>
-          <volumelevel>.6</volumelevel>
+          <attenuation_function>linear</attenuation_function>
+          <attenuation_shape>sphere</attenuation_shape>
+          <inner_radius>5.0</inner_radius>
+          <falloff_distance>100.0</falloff_distance>
+          <volume_level>.6</volume_level>
           <playing>false</playing>
-          <playduration>0</playduration>
+          <play_duration>0</play_duration>
         </source>
       </plugin>
     </model>
@@ -227,7 +227,7 @@
         <microphone>
           <id>1</id>
           <pose>0 .5 0 0 0 0</pose>
-          <volumethreshold>.4</volumethreshold>
+          <volume_threshold>.4</volume_threshold>
         </microphone>
       </plugin>
     </model>
@@ -270,7 +270,7 @@
         <microphone>
           <id>2</id>
           <pose>0.5 0.5 0.5 0 0 0</pose>
-          <volumethreshold>.3</volumethreshold>
+          <volume_threshold>.3</volume_threshold>
         </microphone>
       </plugin>
     </model>

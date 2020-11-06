@@ -41,7 +41,7 @@ namespace logical_audio
     kAttShapeMap {{"sphere", AttenuationShape::SPHERE}};
 
   //////////////////////////////////////////////////
-  bool Detect(const double _volumeLevel,
+  bool detect(const double _volumeLevel,
       const double _volumeDetectionThreshold)
   {
     // if the volume level is <= 0, this can't be detected
@@ -53,7 +53,7 @@ namespace logical_audio
   }
 
   //////////////////////////////////////////////////
-  double ComputeVolume(const bool _playing,
+  double computeVolume(const bool _playing,
       const AttenuationFunction _attenuationFunc,
       const AttenuationShape _attenuationShape,
       const double _sourceEmissionVolume,
@@ -101,7 +101,7 @@ namespace logical_audio
   }
 
   //////////////////////////////////////////////////
-  void SetAttenuationFunction(AttenuationFunction &_attenuationFunc,
+  void setAttenuationFunction(AttenuationFunction &_attenuationFunc,
       std::string _str)
   {
     std::transform(_str.begin(), _str.end(),
@@ -115,7 +115,7 @@ namespace logical_audio
   }
 
   //////////////////////////////////////////////////
-  void SetAttenuationShape(AttenuationShape &_attenuationShape,
+  void setAttenuationShape(AttenuationShape &_attenuationShape,
       std::string _str)
   {
     std::transform(_str.begin(), _str.end(),
@@ -129,7 +129,7 @@ namespace logical_audio
   }
 
   //////////////////////////////////////////////////
-  void ValidateInnerRadiusAndFalloffDistance(double &_innerRadius,
+  void validateInnerRadiusAndFalloffDistance(double &_innerRadius,
       double &_falloffDistance)
   {
     if (_innerRadius < 0.0)
@@ -144,14 +144,14 @@ namespace logical_audio
   }
 
   //////////////////////////////////////////////////
-  void ValidateVolumeLevel(double &_volumeLevel)
+  void validateVolumeLevel(double &_volumeLevel)
   {
     if (_volumeLevel < 0.0)
       _volumeLevel = 0.0;
     else if (_volumeLevel > 1.0)
       _volumeLevel = 1.0;
   }
-}
-}
-}
-}
+}  // namespace logical_audio
+}  // namespace IGNITION_GAZEBO_VERSION_NAMESPACE
+}  // namespace gazebo
+}  // namespace ignition

@@ -46,7 +46,7 @@ namespace systems
   ///
   /// Secifying an audio source via SDF is done as follows:
   ///
-  /// <audiosource> A new audiosource in the environment, which has the
+  /// <source> A new audiosource in the environment, which has the
   ///   following child elements:
   ///     * <id> The source ID, which must be unique and >= 0.
   ///     * <pose> The pose, expressed as "x y z roll pitch yaw".
@@ -57,26 +57,26 @@ namespace systems
   ///       If the plugin is used inside of a <world> tag, then the source's
   ///       <pose> is relative to the world (i.e., <pose> specifies an
   ///       absolute pose).
-  ///     * <attenuationfunction> The attenuation function.
+  ///     * <attenuation_function> The attenuation function.
   ///       See logical_audio::AttenuationFunction for a list of valid
   ///       attenuation functions, and logical_audio::SetAttenuationFunction
   ///       for how to specify an attenuation function in SDF.
-  ///     * <attenuationshape> The attenuation shape.
+  ///     * <attenuation_shape> The attenuation shape.
   ///       See logical_audio::AttenuationShape for a list of valid
   ///       attenuation shapes, and logical_audio::SetAttenuationShape for how
   ///       to specify an attenuation shape in SDF.
-  ///     * <innerradius> The inner radius of the attenuation shape.
+  ///     * <inner_radius> The inner radius of the attenuation shape.
   ///       This value must be >= 0.0. The volume of the source will be
   ///       <audiosource><volume> at locations that have a distance <= inner
   ///       radius from the source.
-  ///     * <falloffdistance> The falloff distance. This value must be greater
-  ///       than the value of the source's <innerradius>. This defines the
+  ///     * <falloff_distance> The falloff distance. This value must be greater
+  ///       than the value of the source's <inner_radius>. This defines the
   ///       distance from the audio source where the volume becomes 0.
-  ///     * <volumelevel> The volume level emitted from the source. This must
+  ///     * <volume_level> The volume level emitted from the source. This must
   ///       be a value between 0.0 and 1.0 (representing 0% to 100%).
   ///     * <playing> Whether the source should play immediately or not.
   ///       Use true to initiate audio immediately, and false otherwise.
-  ///     * <playduration> The duration (in seconds) audio is played from the
+  ///     * <play_duration> The duration (in seconds) audio is played from the
   ///       source. This value must be >= 0. A value of 0 means that the source
   ///       will play for an infinite amount of time.
   ///
@@ -93,7 +93,7 @@ namespace systems
   ///       If the plugin is used inside of a <world> tag, then the source's
   ///       <pose> is relative to the world (i.e., <pose> specifies an
   ///       absolute pose).
-  ///     * <volumedetectionthreshold> The minimum volume level the microphone
+  ///     * <volume_threshold> The minimum volume level the microphone
   ///       can detect. This must be a value between 0.0 and 1.0
   ///       (representing 0% to 100%).
   ///
@@ -107,6 +107,11 @@ namespace systems
   ///     * /stop_source_<id>
   ///         * Stops playing the source with the specified ID.
   ///           If the source is already stopped, nothing happens.
+  ///
+  /// Microphone detection information can be retrieved via ignition topics.
+  /// Whenever a microphone detects a source, it publishes a message to the
+  /// /mic_<id>_detection topic, where <id> is the value specified in the
+  /// microphone's <id> tag from the SDF
   class IGNITION_GAZEBO_VISIBLE LogicalAudioSensorPlugin :
     public System,
     public ISystemConfigure,
