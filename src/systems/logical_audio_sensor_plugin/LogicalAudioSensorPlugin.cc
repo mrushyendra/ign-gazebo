@@ -354,7 +354,7 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
 
   // create services for this source
   std::stringstream ss;
-  ss << "/play_source_" << id;
+  ss << "/audio_source_" << id << "/play";
   if (!this->node.Advertise(ss.str(),
         &LogicalAudioSensorPluginPrivate::PlaySourceSrv, this))
   {
@@ -364,7 +364,7 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
   }
   ss.str("");
   ss.clear();
-  ss << "/stop_source_" << id;
+  ss << "/audio_source_" << id << "/stop";
   if (!this->node.Advertise(ss.str(),
         &LogicalAudioSensorPluginPrivate::StopSourceSrv, this))
   {
@@ -462,7 +462,7 @@ void LogicalAudioSensorPluginPrivate::CreateMicrophone(
 
   // create the detection publisher for this microphone
   std::stringstream ss;
-  ss << "/mic_" << id << "_detection";
+  ss << "/mic_" << id << "/detection";
   this->micDetectionPub =
     this->node.Advertise<ignition::msgs::Double>(ss.str());
   if (!this->micDetectionPub)
