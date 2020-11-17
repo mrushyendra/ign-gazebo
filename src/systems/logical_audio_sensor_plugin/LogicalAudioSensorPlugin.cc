@@ -21,9 +21,12 @@
 #include <mutex>
 #include <sstream>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <ignition/gazebo/components/LogicalAudio.hh>
 #include <ignition/gazebo/components/Model.hh>
+#include <ignition/gazebo/components/Name.hh>
 #include <ignition/gazebo/components/Pose.hh>
 #include <ignition/gazebo/components/World.hh>
 #include <ignition/msgs.hh>
@@ -45,20 +48,24 @@ class ignition::gazebo::systems::LogicalAudioSensorPluginPrivate
   /// \param[in] _parent The source element's parent entity.
   /// \param[in] _ecm The simulation's EntityComponentManager.
   /// \param[in] _sdfEntityCreator An SdfEntityCreator.
+  /// \param[in] _ids A list of audio source IDs that are connected to _parent.
   public: void CreateAudioSource(const sdf::ElementPtr &_elem,
               const Entity &_parent,
               EntityComponentManager &_ecm,
-              SdfEntityCreator &_sdfEntityCreator);
+              SdfEntityCreator &_sdfEntityCreator,
+              std::unordered_set<unsigned int> &_ids);
 
   /// \brief Creates a microphone with attributes specified in an SDF file.
   /// \param[in] _elem A pointer to the microphone element in the SDF file.
   /// \param[in] _parent The microphone element's parent entity.
   /// \param[in] _ecm The simulation's EntityComponentManager.
   /// \param[in] _sdfEntityCreator An SdfEntityCreator.
+  /// \param[in] _ids A list of microphone IDs that are connected to _parent.
   public: void CreateMicrophone(const sdf::ElementPtr &_elem,
               const Entity &_parent,
               EntityComponentManager &_ecm,
-              SdfEntityCreator &_sdfEntityCreator);
+              SdfEntityCreator &_sdfEntityCreator,
+              std::unordered_set<unsigned int> &_ids);
 
   /// \brief Callback for a service call that can start playing an audio
   /// source. If the source specified in the service is already playing,
@@ -83,8 +90,11 @@ class ignition::gazebo::systems::LogicalAudioSensorPluginPrivate
   /// \brief Node used to create publishers and services
   public: ignition::transport::Node node;
 
-  /// \brief Publishes microphone detection information
-  public: ignition::transport::Node::Publisher micDetectionPub;
+  /// \brief A list of microphone detection publishers for a specific entity
+  /// (an entity can have multiple microphones attached to it).
+  /// The key is the microphone's ID.
+  public: std::unordered_map<unsigned int,
+            ignition::transport::Node::Publisher> micDetectionPubs;
 
   /// \brief A flag used to initialize a source's playing information
   /// before starting simulation.
@@ -143,14 +153,24 @@ void LogicalAudioSensorPlugin::Configure(const Entity &_entity,
 
   if (sdfClone->HasElement(kSource))
   {
-    auto sourceElem = sdfClone->GetElement(kSource);
-    this->dataPtr->CreateAudioSource(sourceElem, _entity, _ecm,
-        sdfEntityCreator);
+    std::unordered_set<unsigned int> allIDs;
+    for (auto sourceElem = sdfClone->GetElement(kSource); sourceElem;
+          sourceElem = sourceElem->GetNextElement(kSource))
+    {
+      this->dataPtr->CreateAudioSource(sourceElem, _entity, _ecm,
+          sdfEntityCreator, allIDs);
+    }
   }
-  else if (sdfClone->HasElement(kMicrophone))
+
+  if (sdfClone->HasElement(kMicrophone))
   {
-    auto micElem = sdfClone->GetElement(kMicrophone);
-    this->dataPtr->CreateMicrophone(micElem, _entity, _ecm, sdfEntityCreator);
+    std::unordered_set<unsigned int> allIDs;
+    for (auto micElem = sdfClone->GetElement(kMicrophone); micElem;
+          micElem = micElem->GetNextElement(kMicrophone))
+    {
+      this->dataPtr->CreateMicrophone(micElem, _entity, _ecm, sdfEntityCreator,
+          allIDs);
+    }
   }
 }
 
@@ -252,7 +272,7 @@ void LogicalAudioSensorPlugin::PostUpdate(const UpdateInfo &_info,
           headerData->set_key(std::to_string(_source->Data().id));
           msg.set_data(vol);
 
-          this->dataPtr->micDetectionPub.Publish(msg);
+          this->dataPtr->micDetectionPubs[micInfo.id].Publish(msg);
         }
 
         return true;
@@ -265,7 +285,8 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
     const sdf::ElementPtr &_elem,
     const Entity &_parent,
     EntityComponentManager &_ecm,
-    SdfEntityCreator &_sdfEntityCreator)
+    SdfEntityCreator &_sdfEntityCreator,
+    std::unordered_set<unsigned int> &_ids)
 {
   static const std::string kSourceSkipMsg =
     "Skipping the creation of this source.\n";
@@ -277,23 +298,14 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
   }
   const auto id = _elem->Get<unsigned int>("id");
 
-  // make sure no other sources exist with the same ID
-  bool duplicate = false;
-  _ecm.Each<components::LogicalAudioSource>(
-    [&](const Entity &/*_entity*/,
-        const components::LogicalAudioSource *_source)
-    {
-      if (_source->Data().id == id)
-      {
-        ignerr << "The specified source ID already exists for "
-          << "another source. " << kSourceSkipMsg;
-        duplicate = true;
-        return false;
-      }
-      return true;
-    });
-  if (duplicate)
+  // make sure no other sources exist with the same ID in the parent
+  if (_ids.find(id) != _ids.end())
+  {
+    ignerr << "The specified source ID of " << id << " already exists for "
+      << "another source in entity " << _parent << ". " << kSourceSkipMsg;
     return;
+  }
+  _ids.insert(id);
 
   if (!_elem->HasElement("pose"))
   {
@@ -353,23 +365,27 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
   const auto playDuration = _elem->Get<unsigned int>("play_duration");
 
   // create services for this source
+  // (namespace the services to the source's parent if the source
+  // is attached to a parent with a name)
+  auto nameComp = _ecm.Component<components::Name>(_parent);
+  std::string prefix = nameComp ? "/" + nameComp->Data() : "";
   std::stringstream ss;
-  ss << "/audio_source_" << id << "/play";
+  ss << prefix << "/audio_source_" << id << "/play";
   if (!this->node.Advertise(ss.str(),
         &LogicalAudioSensorPluginPrivate::PlaySourceSrv, this))
   {
     ignerr << "Error advertising the play source service for source "
-      << id << ". " << kSourceSkipMsg;
+      << id << " in entity " << _parent << ". " << kSourceSkipMsg;
     return;
   }
   ss.str("");
   ss.clear();
-  ss << "/audio_source_" << id << "/stop";
+  ss << prefix << "/audio_source_" << id << "/stop";
   if (!this->node.Advertise(ss.str(),
         &LogicalAudioSensorPluginPrivate::StopSourceSrv, this))
   {
     ignerr << "Error advertising the stop source service for source "
-      << id << ". " << kSourceSkipMsg;
+      << id << " in entity " << _parent << ". " << kSourceSkipMsg;
     return;
   }
 
@@ -416,7 +432,8 @@ void LogicalAudioSensorPluginPrivate::CreateMicrophone(
     const sdf::ElementPtr &_elem,
     const Entity &_parent,
     EntityComponentManager &_ecm,
-    SdfEntityCreator &_sdfEntityCreator)
+    SdfEntityCreator &_sdfEntityCreator,
+    std::unordered_set<unsigned int> &_ids)
 {
   static const std::string kMicSkipMsg =
     "Skipping the creation of this microphone.\n";
@@ -428,23 +445,14 @@ void LogicalAudioSensorPluginPrivate::CreateMicrophone(
   }
   const auto id = _elem->Get<unsigned int>("id");
 
-  // make sure no other microphones exist with the same ID
-  bool duplicate = false;
-  _ecm.Each<components::LogicalMicrophone>(
-    [&](const Entity &/*_entity*/,
-        const components::LogicalMicrophone *_mic)
-    {
-      if (_mic->Data().id == id)
-      {
-        ignerr << "The specified microphone ID already exists for "
-          << "another microphone. " << kMicSkipMsg;
-        duplicate = true;
-        return false;
-      }
-      return true;
-    });
-  if (duplicate)
+  // make sure no other microphones exist with the same ID in the parent
+  if (_ids.find(id) != _ids.end())
+  {
+    ignerr << "The specified microphone ID of " << id << " already exists for "
+      << "another microphone in entity " << _parent << ". " << kMicSkipMsg;
     return;
+  }
+  _ids.insert(id);
 
   if (!_elem->HasElement("pose"))
   {
@@ -461,16 +469,20 @@ void LogicalAudioSensorPluginPrivate::CreateMicrophone(
   const auto volumeDetectionThreshold = _elem->Get<double>("volume_threshold");
 
   // create the detection publisher for this microphone
+  // (namespace the topic to the microphone's parent if the microphone
+  // is attached to a parent with a name)
+  auto nameComp = _ecm.Component<components::Name>(_parent);
+  std::string prefix = nameComp ? "/" + nameComp->Data() : "";
   std::stringstream ss;
-  ss << "/mic_" << id << "/detection";
-  this->micDetectionPub =
-    this->node.Advertise<ignition::msgs::Double>(ss.str());
-  if (!this->micDetectionPub)
+  ss << prefix << "/mic_" << id << "/detection";
+  auto pub = this->node.Advertise<ignition::msgs::Double>(ss.str());
+  if (!pub)
   {
     ignerr << "Error creating a detection publisher for microphone "
-      << id << ". " << kMicSkipMsg;
+      << id << " in entity " << _parent << ". " << kMicSkipMsg;
     return;
   }
+  this->micDetectionPubs.insert({id, pub});
 
   // create a microphone entity
   auto entity = _ecm.CreateEntity();

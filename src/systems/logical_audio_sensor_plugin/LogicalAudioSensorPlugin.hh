@@ -34,10 +34,8 @@ namespace systems
 
   /// \brief A plugin for logical audio detection.
   ///
-  /// Each <plugin> tag can only accept one sensor (either a sound source
-  /// or microphone).
-  /// In order to create multiple audio sources and microphones,
-  /// multiple <plugin> tags must be used (one for each sensor).
+  /// Each <plugin> tag can accept multiple sensors (sound sources
+  /// and/or microphones).
   /// After each simulation step, microphones check if audio
   /// was detected by any sources in the world.
   /// No audio is actually played to an audio device
@@ -48,7 +46,13 @@ namespace systems
   ///
   /// <source> A new audio source in the environment, which has the
   ///   following child elements:
-  ///     * <id> The source ID, which must be unique and >= 0.
+  ///     * <id> The source ID, which must be unique and an integer >= 0.
+  ///       An ID < 0 results in undefined behavior.
+  ///       The ID must be unique within the scope of all other source IDs
+  ///       in the plugin's parent element - so, if a source was created in a
+  ///       <model> with an ID of 1, no other sources in the same model can have
+  ///       an ID of 1 (however, sources that belong to other models can have an
+  ///       ID of 1).
   ///     * <pose> The pose, expressed as "x y z roll pitch yaw".
   ///       Each pose coordinate must be separated by whitespace.
   ///       The pose is defined relative to the plugin's parent element.
@@ -77,14 +81,21 @@ namespace systems
   ///     * <playing> Whether the source should play immediately or not.
   ///       Use true to initiate audio immediately, and false otherwise.
   ///     * <play_duration> The duration (in seconds) audio is played from the
-  ///       source. This value must be >= 0. A value of 0 means that the source
-  ///       will play for an infinite amount of time.
+  ///       source. This value must be an integer >= 0.
+  ///       A value of 0 means that the source will play for an infinite amount
+  ///       of time.
   ///
   /// Specifying a microphone via SDF is done as follows:
   ///
   /// <microphone> A new microphone in the environment,
   ///   which has the following child elements:
-  ///     * <id> The microphone ID, which must be unique and >= 0.
+  ///     * <id> The microphone ID, which must be unique and an integer >= 0.
+  ///       An ID < 0 results in undefined behavior.
+  ///       The ID must be unique within the scope of all other microphone IDs
+  ///       in the plugin's parent element - so, if a microphone was created in
+  ///       a <model> with an ID of 1, no other microphones in the same model
+  ///       can have an ID of 1 (however, microphones that belong to other
+  ///       models can have an ID of 1).
   ///     * <pose> The pose, expressed as "x y z roll pitch yaw".
   ///       Each pose coordinate must be separated by whitespace.
   ///       The pose is defined relative to the plugin's parent element.
@@ -99,19 +110,23 @@ namespace systems
   ///
   /// Sources can be started and stopped via Ignition service calls.
   /// If a source is successfully created, the following services will be
-  /// created for the source (where <id> is the value specified in the source's
-  /// <id> tag from the SDF):
-  ///     * /audio_source_<id>/play
+  /// created for the source (<PREFIX> is the name of the plugin's parent
+  /// element, if a parent name exists - otherwise, there is
+  /// no prefix - and <id> is the value specified in the source's <id> tag
+  /// from the SDF):
+  ///     * /<PREFIX>/audio_source_<id>/play
   ///         * Starts playing the source with the specified ID.
   ///           If the source is already playing, nothing happens.
-  ///     * /audio_source_<id>/stop
+  ///     * /<PREFIX>/audio_source_<id>/stop
   ///         * Stops playing the source with the specified ID.
   ///           If the source is already stopped, nothing happens.
   ///
   /// Microphone detection information can be retrieved via Ignition topics.
   /// Whenever a microphone detects a source, it publishes a message to the
-  /// /mic_<id>/detection topic, where <id> is the value specified in the
-  /// microphone's <id> tag from the SDF
+  /// /<PREFIX>/mic_<id>/detection topic, where <PREFIX> is the name of the
+  /// plugin's parent element, if a parent name exists - otherwise, there is
+  /// no prefix - and <id> is the value specified in the microphone's <id> tag
+  /// from the SDF.
   class IGNITION_GAZEBO_VISIBLE LogicalAudioSensorPlugin :
     public System,
     public ISystemConfigure,

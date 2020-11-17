@@ -91,7 +91,7 @@
       </link>
     </model>
 
-    <model name="source_1">
+    <model name="red_box">
       <pose>0 0 0.5 0 0 0</pose>
       <link name="box_link">
         <inertial>
@@ -140,7 +140,7 @@
       </plugin>
     </model>
 
-    <model name="source_2">
+    <model name="blue_box">
       <pose>3 3 0.5 0 0 0</pose>
       <link name="box_link">
         <inertial>
@@ -176,7 +176,7 @@
       </link>
       <plugin filename="ignition-gazebo-logicalaudiosensorplugin-system" name="ignition::gazebo::systems::LogicalAudioSensorPlugin">
         <source>
-          <id>2</id>
+          <id>1</id>
           <pose>0 0 0 0 0 0</pose>
           <attenuation_function>linear</attenuation_function>
           <attenuation_shape>sphere</attenuation_shape>
@@ -189,7 +189,7 @@
       </plugin>
     </model>
 
-    <model name="mic_1">
+    <model name="green_box">
       <pose>0 2 0.5 0 0 0</pose>
       <link name="box_link">
         <inertial>
@@ -232,7 +232,7 @@
       </plugin>
     </model>
 
-    <model name="mic_2">
+    <model name="yellow_box">
       <pose>-5 4 0.5 0 0 0</pose>
       <link name="box_link">
         <inertial>
@@ -268,7 +268,7 @@
       </link>
       <plugin filename="ignition-gazebo-logicalaudiosensorplugin-system" name="ignition::gazebo::systems::LogicalAudioSensorPlugin">
         <microphone>
-          <id>2</id>
+          <id>1</id>
           <pose>0.5 0.5 0.5 0 0 0</pose>
           <volume_threshold>.3</volume_threshold>
         </microphone>
