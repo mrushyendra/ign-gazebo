@@ -7,25 +7,24 @@
 
   The boxes can be moved to mimic sensors attached to a moving robot.
 
-  To start and stop the audio sources, use the /play_source and /stop_source
-  service calls. In order to specify which source you'd like to play or stop,
-  you'll need to append the source id to the end of the service name
-  (the source id is the id specified in the SDF file).
+  To start and stop the audio sources, use the <PREFIX>/source_<id>/play and
+  <PREFIX>/source_<id>/stop service calls.
 
-  To play the source with id 2, run the following command:
-    ign service -s /play_source_2
-      --reqtype ignition.msgs.Empty --reptype ignition.msgs.Empty
-      --timeout 100 --req 'unused: false'
+  To play the source attached to the blue box, run the following command:
+    ign service -s /model/blue_box/sensor/source_1/play
+      --reqtype ignition.msgs.Empty --reptype ignition.msgs.Boolean
+      --timeout 1000 --req 'unused: false'
 
-  To stop the source with id 1, run the following command:
-    ign service -s /play_source_1
-      --reqtype ignition.msgs.Empty --reptype ignition.msgs.Empty
-      --timeout 100 --req 'unused: false'
+  To stop the source attached to the blue box, run the following command:
+    ign service -s /model/blue_box/sensor/source_1/stop
+      --reqtype ignition.msgs.Empty --reptype ignition.msgs.Boolean
+      --timeout 1000 --req 'unused: false'
 
-  You may see "Service call timed out" when calling these services from the
-  command line. This is because there's no request type, and the response type
-  is of ignition::msgs::Empty. You can ignore the "Service call timed out"
-  message.
+  To observe microphone detections, use the <PREFIX>/mic_<id>/detection topic.
+
+  The following command will display detections heard by the microphone attached
+  to the green box:
+    ign topic -e -t /model/green_box/sensor/mic_1/detection
 -->
 <sdf version="1.6">
   <world name="logical_audio_sensor">

@@ -110,23 +110,21 @@ namespace systems
   ///
   /// Sources can be started and stopped via Ignition service calls.
   /// If a source is successfully created, the following services will be
-  /// created for the source (<PREFIX> is the name of the plugin's parent
-  /// element, if a parent name exists - otherwise, there is
-  /// no prefix - and <id> is the value specified in the source's <id> tag
-  /// from the SDF):
-  ///     * /<PREFIX>/audio_source_<id>/play
+  /// created for the source (<PREFIX> is the scoped name for the source - see
+  /// ignition::gazebo::scopedName for more details - and <id> is the value
+  /// specified in the source's <id> tag from the SDF):
+  ///     * <PREFIX>/source_<id>/play
   ///         * Starts playing the source with the specified ID.
   ///           If the source is already playing, nothing happens.
-  ///     * /<PREFIX>/audio_source_<id>/stop
+  ///     * <PREFIX>/source_<id>/stop
   ///         * Stops playing the source with the specified ID.
   ///           If the source is already stopped, nothing happens.
   ///
   /// Microphone detection information can be retrieved via Ignition topics.
   /// Whenever a microphone detects a source, it publishes a message to the
-  /// /<PREFIX>/mic_<id>/detection topic, where <PREFIX> is the name of the
-  /// plugin's parent element, if a parent name exists - otherwise, there is
-  /// no prefix - and <id> is the value specified in the microphone's <id> tag
-  /// from the SDF.
+  /// <PREFIX>/mic_<id>/detection topic, where <PREFIX> is the scoped name
+  /// for the microphone - see ignition::gazebo::scopedName for more details -
+  /// and <id> is the value specified in the microphone's <id> tag from the SDF.
   class IGNITION_GAZEBO_VISIBLE LogicalAudioSensorPlugin :
     public System,
     public ISystemConfigure,
