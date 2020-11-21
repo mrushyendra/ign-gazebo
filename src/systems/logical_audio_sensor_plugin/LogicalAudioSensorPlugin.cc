@@ -18,16 +18,18 @@
 #include "LogicalAudioSensorPlugin.hh"
 
 #include <chrono>
+#include <functional>
 #include <mutex>
-#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 
 #include <ignition/gazebo/components/LogicalAudio.hh>
 #include <ignition/gazebo/components/Model.hh>
 #include <ignition/gazebo/components/Name.hh>
 #include <ignition/gazebo/components/Pose.hh>
+#include <ignition/gazebo/components/Sensor.hh>
 #include <ignition/gazebo/components/World.hh>
 #include <ignition/msgs.hh>
 #include <ignition/transport.hh>
@@ -67,18 +69,6 @@ class ignition::gazebo::systems::LogicalAudioSensorPluginPrivate
               SdfEntityCreator &_sdfEntityCreator,
               std::unordered_set<unsigned int> &_ids);
 
-  /// \brief Callback for a service call that can start playing an audio
-  /// source. If the source specified in the service is already playing,
-  /// nothing happens.
-  /// \param[out] _resp The service response, which is unused.
-  private: bool PlaySourceSrv(ignition::msgs::Empty &_resp);
-
-  /// \brief Callback for a service call that can stop playing an audio
-  /// source. If the source specified in the service is already stopped,
-  /// nothing happens.
-  /// \param[out] _resp The service response, which is unused.
-  private: bool StopSourceSrv(ignition::msgs::Empty &_resp);
-
   /// \brief Checks if a source has exceeded its play duration.
   /// \param[in] _simTimeInfo Information about the current simulation time.
   /// \param[in] _sourcePlayInfo The source's playing information.
@@ -90,41 +80,32 @@ class ignition::gazebo::systems::LogicalAudioSensorPluginPrivate
   /// \brief Node used to create publishers and services
   public: ignition::transport::Node node;
 
-  /// \brief A list of microphone detection publishers for a specific entity
-  /// (an entity can have multiple microphones attached to it).
-  /// The key is the microphone's ID.
-  public: std::unordered_map<unsigned int,
-            ignition::transport::Node::Publisher> micDetectionPubs;
-
   /// \brief A flag used to initialize a source's playing information
   /// before starting simulation.
   public: bool firstTime{true};
 
-  /// \brief A reference to the source entity that the plugin created.
-  /// If no source was specified when configuring the plugin, the
-  /// reference will be to a null entity.
-  public: Entity sourceEntity{kNullEntity};
+  /// \brief A list of source entities for a specific parent entity
+  /// (an entity can have multiple sources attached to it).
+  /// The value is a pair of booleans that indicate if the source
+  /// in the corresponding key should be played/stopped because of a service
+  /// call. The first element in the pair indicates if the play source
+  /// service was called, and the second element in the pair indicates if
+  /// the stop source service was called.
+  public: std::unordered_map<Entity, std::pair<bool, bool>> sourceEntities;
 
-  /// \brief Whether or not the source (this->sourceEntity)
-  /// should be played because of a service call.
-  public: bool playSource{false};
+  /// \brief A list of microphone entities for a specific parent entity
+  /// (an entity can have multiple microphones attached to it).
+  /// The value is the microphone's detection publisher.
+  public: std::unordered_map<Entity,
+            ignition::transport::Node::Publisher> micEntities;
 
   /// \brief A mutex used to ensure that the play source service call does
   /// not interfere with the source's state in the PreUpdate step.
   public: std::mutex playSourceMutex;
 
-  /// \brief Whether or not the source (this->sourceEntity)
-  /// should be stopped because of a service call.
-  public: bool stopSource{false};
-
   /// \brief A mutex used to ensure that the stop source service call does
   /// not interfere with the source's state in the PreUpdate step.
   public: std::mutex stopSourceMutex;
-
-  /// \brief A reference to the microphone entity that the plugin created.
-  /// If no microphone was specified when configuring the plugin, the
-  /// reference will be to a null entity.
-  public: Entity micEntity{kNullEntity};
 };
 
 //////////////////////////////////////////////////
@@ -178,36 +159,35 @@ void LogicalAudioSensorPlugin::Configure(const Entity &_entity,
 void LogicalAudioSensorPlugin::PreUpdate(const UpdateInfo &_info,
                 EntityComponentManager &_ecm)
 {
-  if (this->dataPtr->sourceEntity != kNullEntity)
+  for (auto & [entity, serviceFlags] : this->dataPtr->sourceEntities)
   {
-    auto startTime = _info.simTime - _info.dt;
-
     auto& playInfo = _ecm.Component<components::LogicalAudioSourcePlayInfo>(
-        this->dataPtr->sourceEntity)->Data();
+        entity)->Data();
 
     // configure the source's play information before starting the simulation
     if (this->dataPtr->firstTime)
-    {
-      playInfo.startTime = startTime;
-      this->dataPtr->firstTime = false;
-    }
+      playInfo.startTime = _info.simTime;
 
     // start playing a source if the play source service was called
     std::unique_lock<std::mutex> play_lock(this->dataPtr->playSourceMutex);
-    if (this->dataPtr->playSource)
+    if (serviceFlags.first)
     {
+      // only reset the source's play start time if it isn't playing already
+      // (calling the play service on a source that's already playing does nothing)
+      if (!playInfo.playing)
+        playInfo.startTime = _info.simTime;
+
       playInfo.playing = true;
-      playInfo.startTime = startTime;
-      this->dataPtr->playSource = false;
+      serviceFlags.first = false;
     }
     play_lock.unlock();
 
     // stop playing a source if the stop source service was called
     std::unique_lock<std::mutex> stop_lock(this->dataPtr->stopSourceMutex);
-    if (this->dataPtr->stopSource)
+    if (serviceFlags.second)
     {
       playInfo.playing = false;
-      this->dataPtr->stopSource = false;
+      serviceFlags.second = false;
     }
     stop_lock.unlock();
 
@@ -215,26 +195,27 @@ void LogicalAudioSensorPlugin::PreUpdate(const UpdateInfo &_info,
     if (this->dataPtr->DurationExceeded(_info, playInfo))
       playInfo.playing = false;
   }
+
+  this->dataPtr->firstTime = false;
 }
 
 //////////////////////////////////////////////////
 void LogicalAudioSensorPlugin::PostUpdate(const UpdateInfo &_info,
                 const EntityComponentManager &_ecm)
 {
-  // check to see which sources a microphone can hear
-  if (this->dataPtr->micEntity != kNullEntity)
-  {
-    const auto micPose = worldPose(this->dataPtr->micEntity, _ecm);
-    const auto micInfo = _ecm.Component<components::LogicalMicrophone>(
-        this->dataPtr->micEntity)->Data();
+  // get the current sim time so that it can be placed in the header
+  // of microphone detection messages
+  const auto simSeconds =
+    std::chrono::duration_cast<std::chrono::seconds>(_info.simTime);
+  const auto simNanoseconds =
+    std::chrono::duration_cast<std::chrono::nanoseconds>(_info.simTime);
+  const auto nanosecondOffset = (simNanoseconds - simSeconds).count();
 
-    // get the current sim time so that it can be placed in the header
-    // of microphone detection messages
-    const auto simSeconds =
-      std::chrono::duration_cast<std::chrono::seconds>(_info.simTime);
-    const auto simNanoseconds =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(_info.simTime);
-    const auto nanosecondOffset = (simNanoseconds - simSeconds).count();
+  for (auto & [micEntity, detectionPub] : this->dataPtr->micEntities)
+  {
+    const auto micPose = worldPose(micEntity, _ecm);
+    const auto micInfo = _ecm.Component<components::LogicalMicrophone>(
+        micEntity)->Data();
 
     _ecm.Each<components::LogicalAudioSource,
               components::LogicalAudioSourcePlayInfo>(
@@ -242,11 +223,6 @@ void LogicalAudioSensorPlugin::PostUpdate(const UpdateInfo &_info,
           const components::LogicalAudioSource *_source,
           const components::LogicalAudioSourcePlayInfo *_playInfo)
       {
-        // skip this source if the playing duration has been exceeded
-        // (this source will be stopped in the following PreUpdate call)
-        if (this->dataPtr->DurationExceeded(_info, _playInfo->Data()))
-          return true;
-
         const auto sourcePose = worldPose(_entity, _ecm);
         const auto vol = logical_audio::computeVolume(
             _playInfo->Data().playing,
@@ -269,10 +245,10 @@ void LogicalAudioSensorPlugin::PostUpdate(const UpdateInfo &_info,
           timeStamp->set_sec(simSeconds.count());
           timeStamp->set_nsec(nanosecondOffset);
           auto headerData = header->add_data();
-          headerData->set_key(std::to_string(_source->Data().id));
+          headerData->set_key(scopedName(_entity, _ecm));
           msg.set_data(vol);
 
-          this->dataPtr->micDetectionPubs[micInfo.id].Publish(msg);
+          detectionPub.Publish(msg);
         }
 
         return true;
@@ -364,31 +340,6 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
   }
   const auto playDuration = _elem->Get<unsigned int>("play_duration");
 
-  // create services for this source
-  // (namespace the services to the source's parent if the source
-  // is attached to a parent with a name)
-  auto nameComp = _ecm.Component<components::Name>(_parent);
-  std::string prefix = nameComp ? "/" + nameComp->Data() : "";
-  std::stringstream ss;
-  ss << prefix << "/audio_source_" << id << "/play";
-  if (!this->node.Advertise(ss.str(),
-        &LogicalAudioSensorPluginPrivate::PlaySourceSrv, this))
-  {
-    ignerr << "Error advertising the play source service for source "
-      << id << " in entity " << _parent << ". " << kSourceSkipMsg;
-    return;
-  }
-  ss.str("");
-  ss.clear();
-  ss << prefix << "/audio_source_" << id << "/stop";
-  if (!this->node.Advertise(ss.str(),
-        &LogicalAudioSensorPluginPrivate::StopSourceSrv, this))
-  {
-    ignerr << "Error advertising the stop source service for source "
-      << id << " in entity " << _parent << ". " << kSourceSkipMsg;
-    return;
-  }
-
   // create an audio source entity
   auto entity = _ecm.CreateEntity();
   if (entity == kNullEntity)
@@ -398,6 +349,9 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
     return;
   }
   _sdfEntityCreator.SetParent(entity, _parent);
+  _ecm.CreateComponent(entity,
+      components::Name("source_" + std::to_string(id)));
+  _ecm.CreateComponent(entity, components::Sensor());
 
   // save the audio source properties as a component
   logical_audio::Source source;
@@ -424,7 +378,40 @@ void LogicalAudioSensorPluginPrivate::CreateAudioSource(
   _ecm.CreateComponent(entity,
       components::LogicalAudioSourcePlayInfo(playInfo));
 
-  this->sourceEntity = entity;
+  // create service callbacks that allow this source to be played/stopped
+  std::function<bool(ignition::msgs::Boolean &)> playSrvCb =
+    [this, entity](ignition::msgs::Boolean &_resp)
+    {
+      std::lock_guard<std::mutex> lock(this->playSourceMutex);
+      this->sourceEntities[entity].first = true;
+      _resp.set_data(true);
+      return true;
+    };
+  std::function<bool(ignition::msgs::Boolean &)> stopSrvCb =
+    [this, entity](ignition::msgs::Boolean &_resp)
+    {
+      std::lock_guard<std::mutex> lock(this->stopSourceMutex);
+      this->sourceEntities[entity].second = true;
+      _resp.set_data(true);
+      return true;
+    };
+
+  // create services for this source
+  const auto full_name = scopedName(entity, _ecm);
+  if (!this->node.Advertise(full_name + "/play", playSrvCb))
+  {
+    ignerr << "Error advertising the play source service for source "
+      << id << " in entity " << _parent << ". " << kSourceSkipMsg;
+    return;
+  }
+  if (!this->node.Advertise(full_name + "/stop", stopSrvCb))
+  {
+    ignerr << "Error advertising the stop source service for source "
+      << id << " in entity " << _parent << ". " << kSourceSkipMsg;
+    return;
+  }
+
+  this->sourceEntities.insert({entity, {false, false}});
 }
 
 //////////////////////////////////////////////////
@@ -468,22 +455,6 @@ void LogicalAudioSensorPluginPrivate::CreateMicrophone(
   }
   const auto volumeDetectionThreshold = _elem->Get<double>("volume_threshold");
 
-  // create the detection publisher for this microphone
-  // (namespace the topic to the microphone's parent if the microphone
-  // is attached to a parent with a name)
-  auto nameComp = _ecm.Component<components::Name>(_parent);
-  std::string prefix = nameComp ? "/" + nameComp->Data() : "";
-  std::stringstream ss;
-  ss << prefix << "/mic_" << id << "/detection";
-  auto pub = this->node.Advertise<ignition::msgs::Double>(ss.str());
-  if (!pub)
-  {
-    ignerr << "Error creating a detection publisher for microphone "
-      << id << " in entity " << _parent << ". " << kMicSkipMsg;
-    return;
-  }
-  this->micDetectionPubs.insert({id, pub});
-
   // create a microphone entity
   auto entity = _ecm.CreateEntity();
   if (entity == kNullEntity)
@@ -493,6 +464,9 @@ void LogicalAudioSensorPluginPrivate::CreateMicrophone(
     return;
   }
   _sdfEntityCreator.SetParent(entity, _parent);
+  _ecm.CreateComponent(entity,
+      components::Name("mic_" + std::to_string(id)));
+  _ecm.CreateComponent(entity, components::Sensor());
 
   // save the microphone properties as a component
   logical_audio::Microphone microphone;
@@ -504,27 +478,17 @@ void LogicalAudioSensorPluginPrivate::CreateMicrophone(
   _ecm.CreateComponent(entity,
       components::Pose(pose));
 
-  this->micEntity = entity;
-}
+  // create the detection publisher for this microphone
+  auto pub = this->node.Advertise<ignition::msgs::Double>(
+      scopedName(entity, _ecm) + "/detection");
+  if (!pub)
+  {
+    ignerr << "Error creating a detection publisher for microphone "
+      << id << " in entity " << _parent << ". " << kMicSkipMsg;
+    return;
+  }
 
-//////////////////////////////////////////////////
-bool LogicalAudioSensorPluginPrivate::PlaySourceSrv(
-    ignition::msgs::Empty &_resp)
-{
-  std::lock_guard<std::mutex> lock(this->playSourceMutex);
-  this->playSource = true;
-  _resp.set_unused(true);
-  return true;
-}
-
-//////////////////////////////////////////////////
-bool LogicalAudioSensorPluginPrivate::StopSourceSrv(
-    ignition::msgs::Empty &_resp)
-{
-  std::lock_guard<std::mutex> lock(this->stopSourceMutex);
-  this->stopSource = true;
-  _resp.set_unused(true);
-  return true;
+  this->micEntities.insert({entity, pub});
 }
 
 //////////////////////////////////////////////////
@@ -535,11 +499,8 @@ bool LogicalAudioSensorPluginPrivate::DurationExceeded(
   auto currDuration = _simTimeInfo.simTime - _sourcePlayInfo.startTime;
 
   // make sure the source doesn't have an infinite play duration
-  if ((_sourcePlayInfo.playDuration.count() > 0) &&
-      (currDuration > _sourcePlayInfo.playDuration))
-    return true;
-
-  return false;
+  return (_sourcePlayInfo.playDuration.count() > 0 ) &&
+    (currDuration > _sourcePlayInfo.playDuration);
 }
 
 IGNITION_ADD_PLUGIN(LogicalAudioSensorPlugin,
