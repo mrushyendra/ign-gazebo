@@ -22,7 +22,7 @@
       </plugin>
     </model>
 
-    <model name="mic_model">
+    <model name="mic_model_close">
       <pose>1 1 0 0 0 0</pose>
       <link name="mic_link">
       </link>
@@ -33,6 +33,21 @@
           <id>2</id>
           <pose>0.5 0 0 0 0 0</pose>
           <volume_threshold>.1</volume_threshold>
+        </microphone>
+      </plugin>
+    </model>
+
+    <model name="mic_model_far">
+      <pose>10 1 0 0 0 0</pose>
+      <link name="mic_link">
+      </link>
+      <plugin
+        filename="ignition-gazebo-logicalaudiosensorplugin-system"
+        name="ignition::gazebo::systems::LogicalAudioSensorPlugin">
+        <microphone>
+          <id>1</id>
+          <pose>0 0 0 0 0 0</pose>
+          <volume_threshold>.2</volume_threshold>
         </microphone>
       </plugin>
     </model>

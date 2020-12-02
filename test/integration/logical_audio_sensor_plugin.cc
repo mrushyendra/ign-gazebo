@@ -19,8 +19,9 @@
 
 #include <chrono>
 #include <functional>
-#include <thread>
 #include <string>
+#include <thread>
+#include <vector>
 
 #include <ignition/common/Console.hh>
 #include <ignition/math/Pose3.hh>
@@ -68,15 +69,17 @@ TEST_F(LogicalAudioTest, LogicalAudio)
   // helper variables for checking the validity of the ECM
   const ignition::math::Pose3d sourcePose(0, 0, 0, 0, 0, 0);
   const auto zeroSeconds = std::chrono::seconds(0);
-  const ignition::math::Pose3d micPose(0.5, 0, 0, 0, 0, 0);
+  const ignition::math::Pose3d micClosePose(0.5, 0, 0, 0, 0, 0);
+  const ignition::math::Pose3d micFarPose(0, 0, 0, 0, 0, 0);
   std::chrono::steady_clock::duration sourceStartTime;
   bool firstTime{true};
 
-  // flags that verify the ECM was checked for a source and microphone
+  // flags that verify the ECM was checked for the source and microphones
   bool checkedSource{false};
-  bool checkedMic{false};
+  bool checkedMicClose{false};
+  bool checkedMicFar{false};
 
-  // make a test system and check the ECM for a source and microphone
+  // make a test system and check the ECM for the source and microphones
   test::Relay testSystem;
   testSystem.OnPreUpdate([&](const UpdateInfo &_info,
                              EntityComponentManager &/*_ecm*/)
@@ -116,56 +119,91 @@ TEST_F(LogicalAudioTest, LogicalAudio)
             return true;
           });
 
-        // make sure the microphone is stored correctly in the ECM
+        // make sure the microphones are stored correctly in the ECM
         _ecm.Each<components::LogicalMicrophone,
                   components::Pose>(
           [&](const Entity &/*_entity*/,
               const components::LogicalMicrophone *_mic,
               const components::Pose *_pose)
           {
-            EXPECT_EQ(_mic->Data().id, 2u);
-            EXPECT_DOUBLE_EQ(_mic->Data().volumeDetectionThreshold, 0.1);
-
-            EXPECT_EQ(_pose->Data(), micPose);
-
-            checkedMic = true;
+            if (_mic->Data().id == 2u)
+            {
+              EXPECT_EQ(_mic->Data().id, 2u);
+              EXPECT_DOUBLE_EQ(_mic->Data().volumeDetectionThreshold, 0.1);
+              EXPECT_EQ(_pose->Data(), micClosePose);
+              checkedMicClose = true;
+            }
+            else if (_mic->Data().id == 1u)
+            {
+              EXPECT_EQ(_mic->Data().id, 1u);
+              EXPECT_DOUBLE_EQ(_mic->Data().volumeDetectionThreshold, 0.2);
+              EXPECT_EQ(_pose->Data(), micFarPose);
+              checkedMicFar = true;
+            }
             return true;
           });
       });
   server.AddSystem(testSystem.systemPtr);
 
-  // subscribe to the microphone detection topic
-  bool received{false};
+  // subscribe to the close microphone's detection topic
+  const std::string closeTopic =
+    "/model/mic_model_close/sensor/mic_2/detection";
+  bool receivedClose{false};
   msgs::Double msg;
   msg.Clear();
-  std::function<void(const msgs::Double &)> cb =
-      [&received, &msg](const msgs::Double &_msg)
+  std::function<void(const msgs::Double &)> closeCb =
+      [&receivedClose, &msg](const msgs::Double &_msg)
       {
         // only need one message
-        if (received)
+        if (receivedClose)
           return;
 
         msg = _msg;
-        received = true;
+        receivedClose = true;
       };
   transport::Node node;
-  auto subscribed = node.Subscribe(
-      "/model/mic_model/sensor/mic_2/detection", cb);
-  EXPECT_TRUE(subscribed);
+  auto subscribedClose = node.Subscribe(closeTopic, closeCb);
+  EXPECT_TRUE(subscribedClose);
 
-  // make sure microphone detection occurred
+  // subscribe to the far microphone's detection topic
+  const std::string farTopic = "/model/mic_model_far/sensor/mic_1/detection";
+  bool receivedFar{false};
+  std::function<void(const msgs::Double &)> farCb =
+    [&receivedFar](const msgs::Double &/*_msg*/)
+    {
+      receivedFar = true;
+    };
+  auto subscribedFar = node.Subscribe(farTopic, farCb);
+  EXPECT_TRUE(subscribedFar);
+
+  // make sure the microphone topics being subscribed to are being advertised
+  std::vector<std::string> topics;
+  node.TopicList(topics);
+  bool closeTopicAdvertised{false};
+  bool farTopicAdvertised{false};
+  for (const auto & topic : topics)
+  {
+    if (topic == closeTopic)
+      closeTopicAdvertised = true;
+    else if (topic == farTopic)
+      farTopicAdvertised = true;
+  }
+  EXPECT_TRUE(closeTopicAdvertised);
+  EXPECT_TRUE(farTopicAdvertised);
+
+  // make sure close microphone detection occurred, and that the far microphone
+  // didn't detect anything
   server.Run(true, 100, false);
-  // (wait on ignition-transport for message to be received)
-  for (auto sleep = 0; !received && sleep < 30; ++sleep)
+  // (wait on ignition-transport for close detection message to be received.
+  // Don't exit when a close microphone detection is received because we want to
+  // make sure a far microphone detection is never received)
+  for (auto sleep = 0; sleep < 30; ++sleep)
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   EXPECT_TRUE(checkedSource);
-  EXPECT_TRUE(checkedMic);
-  EXPECT_TRUE(received);
+  EXPECT_TRUE(checkedMicClose);
+  EXPECT_TRUE(checkedMicFar);
+  EXPECT_TRUE(receivedClose);
+  EXPECT_FALSE(receivedFar);
   EXPECT_EQ(msg.header().data(0).key(),
       "world/logical_audio_sensor/model/source_model/sensor/source_1");
-
-  // TODO(adlarkin) make sure microphone doesn't occur if source isn't playing
-  checkedSource = false;
-  checkedMic = false;
-  received = false;
 }
