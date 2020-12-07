@@ -128,7 +128,7 @@
         <source>
           <id>1</id>
           <pose>.5 0 0 0 0 0</pose>
-          <attenuation_function> linear</attenuation_function>
+          <attenuation_function>linear</attenuation_function>
           <attenuation_shape>sphere</attenuation_shape>
           <inner_radius>1.0</inner_radius>
           <falloff_distance>5.0</falloff_distance>

@@ -9,7 +9,7 @@ The logical audio plugin does not play actual audio to a device like speakers, b
 ## Setup
 
 Let's take a look at [logical_audio_sensor_plugin.sdf](https://github.com/ignitionrobotics/ign-gazebo/blob/1eb4253c6283e711e983be2b398bc7c0411c9408/examples/worlds/logical_audio_sensor_plugin.sdf), which defines a simulation world with 4 models (in this case, boxes) that have an audio object attached to them.
-This world attaches a logical audio source to the `red_box` and `blue_box` models, and attaches a logical microphone to the `green_box` and `yellow_box` models.
+This world attaches logical audio sources to the `red_box` and `blue_box` models, and attaches logical microphones to the `green_box` and `yellow_box` models.
 
 Let's take a look at the SDF relevant to the source for `red_box` to understand how to define a logical audio source in SDF:
 
@@ -18,7 +18,7 @@ Let's take a look at the SDF relevant to the source for `red_box` to understand 
         <source>
           <id>1</id>
           <pose>.5 0 0 0 0 0</pose>
-          <attenuation_function> linear</attenuation_function>
+          <attenuation_function>linear</attenuation_function>
           <attenuation_shape>sphere</attenuation_shape>
           <inner_radius>1.0</inner_radius>
           <falloff_distance>5.0</falloff_distance>
@@ -34,14 +34,14 @@ An explanation of all of the tags can be found in the [plugin documentation](htt
 * `<id>` is used to identify this source when operating on it via services (services will be discussed later).
 Since a model can have multiple sources and microphones attached to it, each source attached to a particular model must have a unique ID.
 This means that no other sources attached to `red_box` can have an ID of 1, but sources attached to other models can have an ID of 1 (assuming that other models don't already have a source with an ID of 1 attached to it).
-* The source's pose is defined relative to the model pose it's attached to - so, in this case, since the `red_box` pose is `(0, 0, 0.5, 0, 0, 0)` and the source pose is `(0.5, 0, 0, 0, 0, 0)` relative to the `red_box` pose, the source's pose with respect to the world is `(0.5, 0, 0.5, 0, 0, 0)`.
+* The source's pose is defined relative to the model pose it's attached to - so, in this case, since the `red_box` pose is `(0, 0, 0.5, 0, 0, 0)` relative to the world, and the source pose is `(0.5, 0, 0, 0, 0, 0)` relative to the `red_box` pose, the source's pose with respect to the world is `(0.5, 0, 0.5, 0, 0, 0)`.
 * `<attenuation_function>`, `<attenuation_shape>`, `<inner_radius>`, and `<falloff_distance>` are parameters that define the source's behavior as it travels through space.
 More information about how these parameters behave a source's behavior can be found [here](https://docs.unrealengine.com/en-US/Engine/Audio/DistanceModelAttenuation/index.html).
 
 One other thing to note is that the source attached to the `blue_box` model has a `<play_duration>` of `0`.
 This means that this source will play for an infinite amount of simulation time, unless it is stopped manually by the user.
 
-Let's now take a look at the SDF relevant to the microphone for `green_box` to unserstand how to define a logical microphone in SDF:
+Let's now take a look at the SDF relevant to the microphone for `green_box` to understand how to define a logical microphone in SDF:
 
 ```xml
       <plugin filename="ignition-gazebo-logicalaudiosensorplugin-system" name="ignition::gazebo::systems::LogicalAudioSensorPlugin">
@@ -79,7 +79,7 @@ With the simulator still running, open a new terminal and run the following comm
 ign topic -l
 ```
 
-You should see the following detection topics as a part of the output:
+You should see the following detection topics as a part of the output (the `_1` suffix is the ID assigned to the microphones in the SDF):
 
 ```
 /model/green_box/sensor/mic_1/detection
@@ -90,7 +90,7 @@ Let's see if the microphone attached to `yellow_box` can hear anything.
 Run the following command:
 
 ```
-ign pic -e -t /model/yellow_box/sensor/mic_1/detection
+ign topic -e -t /model/yellow_box/sensor/mic_1/detection
 ```
 
 You'll notice that this command produces no output.
@@ -100,7 +100,7 @@ Now, let's see if the microphone attached to `green_box` can hear anything.
 Modify the command you just ran to look like this:
 
 ```
-ign pic -e -t /model/green_box/sensor/mic_1/detection
+ign topic -e -t /model/green_box/sensor/mic_1/detection
 ```
 
 You'll notice an output that looks like the following:
@@ -144,7 +144,7 @@ To see which services to call in order to start/stop a service, open a new termi
 ign service -l
 ```
 
-If you look through the list of available services, you should see the following audio source services:
+If you look through the list of available services, you should see the following audio source services (the `_1` suffix is the ID assigned to the sources in the SDF):
 
 ```
 /model/blue_box/sensor/source_1/play
@@ -178,7 +178,11 @@ data: 0.6
 You can also echo `yellow_box`'s microphone detection topic, and you should see that this microphone can detect audio from `blue_box`'s source as well.
 
 Since the source attached to `blue_box` was configured with `<play_duration>0</play_duration>` in SDF, it won't stop playing unless we call the stop service on it.
-Let's go ahead and call the stop service to make sure that this source will stop playing:
+Before we call the stop service on this source, move `blue_box` around with the transform control tool - you'll see that once `blue_box`'s source volume falls below a microphone's detection threshold (defined in the SDF via `<volume_threshold>`), messages will stop being published to the microphone's detection topic.
+
+Let's go ahead and call the stop service to make sure that this source will stop playing.
+Move `blue_box` back towards its original position, until you see detection messages being published by the microphones attached to `green_box` and/or `yellow_box`.
+Now, go ahead and stop `blue_box`'s source by running the following command:
 
 ```
 ign service -s /model/blue_box/sensor/source_1/stop --reqtype ignition.msgs.Empty --reptype ignition.msgs.Boolean --timeout 1000 --req 'unused: false'
