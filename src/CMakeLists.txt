@@ -59,7 +59,6 @@ set (sources
   World.cc
   ${PROTO_PRIVATE_SRC}
   ${network_sources}
-  systems/logical_audio_sensor_plugin/LogicalAudio.cc
 )
 
 set (gtest_sources
@@ -84,7 +83,6 @@ set (gtest_sources
   network/NetworkConfig_TEST.cc
   network/PeerTracker_TEST.cc
   network/NetworkManager_TEST.cc
-  systems/logical_audio_sensor_plugin/LogicalAudio_TEST.cc
 )
 
 # Create the library target
