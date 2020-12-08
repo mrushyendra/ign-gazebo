@@ -54,7 +54,7 @@ class LogicalAudioTest : public ::testing::Test
   }
 };
 
-TEST_F(LogicalAudioTest, LogicalAudio)
+TEST_F(LogicalAudioTest, LogicalAudioDetections)
 {
   ServerConfig serverConfig;
   const auto sdfFile = std::string(PROJECT_SOURCE_PATH) +
@@ -177,11 +177,11 @@ TEST_F(LogicalAudioTest, LogicalAudio)
   EXPECT_TRUE(subscribedFar);
 
   // make sure the microphone topics being subscribed to are being advertised
-  std::vector<std::string> topics;
-  node.TopicList(topics);
+  std::vector<std::string> allTopics;
+  node.TopicList(allTopics);
   bool closeTopicAdvertised{false};
   bool farTopicAdvertised{false};
-  for (const auto & topic : topics)
+  for (const auto & topic : allTopics)
   {
     if (topic == closeTopic)
       closeTopicAdvertised = true;
@@ -199,6 +199,7 @@ TEST_F(LogicalAudioTest, LogicalAudio)
   // make sure a far microphone detection is never received)
   for (auto sleep = 0; sleep < 30; ++sleep)
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  EXPECT_FALSE(firstTime);
   EXPECT_TRUE(checkedSource);
   EXPECT_TRUE(checkedMicClose);
   EXPECT_TRUE(checkedMicFar);
@@ -206,4 +207,123 @@ TEST_F(LogicalAudioTest, LogicalAudio)
   EXPECT_FALSE(receivedFar);
   EXPECT_EQ(msg.header().data(0).key(),
       "world/logical_audio_sensor/model/source_model/sensor/source_1");
+}
+
+TEST_F(LogicalAudioTest, LogicalAudioServices)
+{
+  ServerConfig serverConfig;
+  const auto sdfFile = std::string(PROJECT_SOURCE_PATH) +
+    "/test/worlds/logical_audio_sensor_plugin_services.sdf";
+  serverConfig.SetSdfFile(sdfFile);
+
+  // start server
+  Server server(serverConfig);
+  EXPECT_FALSE(server.Running());
+  EXPECT_FALSE(*server.Running(0));
+
+  // services to test
+  const std::string playService =
+    "/model/model_not_playing/sensor/source_2/play";
+  const std::string stopService =
+    "/model/model_playing/sensor/source_1/stop";
+  const unsigned int timeout = 1000;
+
+  bool firstTime{true};
+  bool checkedSource1BeforeChange{false};
+  bool checkedSource2BeforeChange{false};
+  bool checkedSource1AfterChange{false};
+  bool checkedSource2AfterChange{false};
+
+  transport::Node node;
+
+  // make a test system to test logical audio source's play/stop services
+  test::Relay testSystem;
+  testSystem.OnPreUpdate([&](const UpdateInfo &_info,
+                             EntityComponentManager &_ecm)
+      {
+
+      });
+  testSystem.OnPostUpdate([&](const UpdateInfo &_info,
+                              const EntityComponentManager &_ecm)
+      {
+        _ecm.Each<components::LogicalAudioSource,
+                  components::LogicalAudioSourcePlayInfo>(
+          [&](const Entity &/*_entity*/,
+              const components::LogicalAudioSource *_source,
+              const components::LogicalAudioSourcePlayInfo *_playInfo)
+          {
+            if (firstTime)
+            {
+              // used for service calls
+              msgs::Boolean response;
+              bool result;
+
+              // check source playing state before service call
+              if (_source->Data().id == 1u)
+              {
+                EXPECT_TRUE(_playInfo->Data().playing);
+                checkedSource1BeforeChange = true;
+
+                // call the stop service
+                auto executed = node.Request(stopService, timeout, response, result);
+                EXPECT_TRUE(executed);
+                EXPECT_TRUE(response.data());
+                EXPECT_TRUE(result);
+              }
+              else if (_source->Data().id == 2u)
+              {
+                EXPECT_FALSE(_playInfo->Data().playing);
+                checkedSource2BeforeChange = true;
+
+                // call the play service
+                auto executed = node.Request(playService, timeout, response, result);
+                EXPECT_TRUE(executed);
+                EXPECT_TRUE(response.data());
+                EXPECT_TRUE(result);
+              }
+            }
+            else
+            {
+              // check source playing state after service call
+              if (_source->Data().id == 1u)
+              {
+                EXPECT_FALSE(_playInfo->Data().playing);
+                checkedSource1AfterChange = true;
+              }
+              else if (_source->Data().id == 2u)
+              {
+                EXPECT_TRUE(_playInfo->Data().playing);
+                checkedSource2AfterChange = true;
+              }
+            }
+
+            return true;
+          });
+
+          firstTime = false;
+      });
+  server.AddSystem(testSystem.systemPtr);
+
+  // make sure the play/stop services exist
+  std::vector<std::string> allServices;
+  node.ServiceList(allServices);
+  bool playServiceAdvertised{false};
+  bool stopServiceAdvertised{false};
+  for (const auto & service : allServices)
+  {
+    if (service == playService)
+      playServiceAdvertised = true;
+    else if (service == stopService)
+      stopServiceAdvertised = true;
+  }
+  EXPECT_TRUE(playServiceAdvertised);
+  EXPECT_TRUE(stopServiceAdvertised);
+
+  // run the server to test the play/stop services
+  server.Run(true, 100, false);
+  EXPECT_FALSE(firstTime);
+  EXPECT_TRUE(checkedSource1BeforeChange);
+  EXPECT_TRUE(checkedSource2BeforeChange);
+  EXPECT_TRUE(checkedSource1AfterChange);
+  EXPECT_TRUE(checkedSource2AfterChange);
 }
