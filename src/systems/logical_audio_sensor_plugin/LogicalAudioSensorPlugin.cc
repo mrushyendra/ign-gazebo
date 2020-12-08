@@ -173,7 +173,8 @@ void LogicalAudioSensorPlugin::PreUpdate(const UpdateInfo &_info,
     if (serviceFlags.first)
     {
       // only reset the source's play start time if it isn't playing already
-      // (calling the play service on a source that's already playing does nothing)
+      // (calling the play service on a source that's already playing does
+      // nothing)
       if (!playInfo.playing)
         playInfo.startTime = _info.simTime;
 

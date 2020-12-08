@@ -238,12 +238,7 @@ TEST_F(LogicalAudioTest, LogicalAudioServices)
 
   // make a test system to test logical audio source's play/stop services
   test::Relay testSystem;
-  testSystem.OnPreUpdate([&](const UpdateInfo &_info,
-                             EntityComponentManager &_ecm)
-      {
-
-      });
-  testSystem.OnPostUpdate([&](const UpdateInfo &_info,
+  testSystem.OnPostUpdate([&](const UpdateInfo &/*_info*/,
                               const EntityComponentManager &_ecm)
       {
         _ecm.Each<components::LogicalAudioSource,
@@ -265,7 +260,8 @@ TEST_F(LogicalAudioTest, LogicalAudioServices)
                 checkedSource1BeforeChange = true;
 
                 // call the stop service
-                auto executed = node.Request(stopService, timeout, response, result);
+                auto executed = node.Request(stopService, timeout, response,
+                    result);
                 EXPECT_TRUE(executed);
                 EXPECT_TRUE(response.data());
                 EXPECT_TRUE(result);
@@ -276,7 +272,8 @@ TEST_F(LogicalAudioTest, LogicalAudioServices)
                 checkedSource2BeforeChange = true;
 
                 // call the play service
-                auto executed = node.Request(playService, timeout, response, result);
+                auto executed = node.Request(playService, timeout, response,
+                    result);
                 EXPECT_TRUE(executed);
                 EXPECT_TRUE(response.data());
                 EXPECT_TRUE(result);
